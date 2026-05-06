@@ -1,0 +1,62 @@
+# Stage 1: Build C++ binary with libcurl on Linux
+FROM ubuntu:22.04 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    build-essential \
+    git \
+    libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy C++ source files
+COPY backend/CMakeLists.txt .
+COPY backend/src/ ./src/
+COPY backend/include/ ./include/
+
+# Build with optimization
+RUN mkdir -p build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make && \
+    ls -lh pokemon-quant
+
+# Stage 2: Runtime container
+FROM node:18-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Create bin directory for executable
+RUN mkdir -p bin
+
+# Copy C++ executable from builder
+COPY --from=builder /build/build/pokemon-quant ./bin/pokemon-quant
+
+# Copy Node.js files
+COPY backend/package.json .
+COPY backend/server.js .
+
+# Copy frontend
+COPY frontend/ ./frontend/
+
+# Install Node dependencies
+RUN npm ci --only=production
+
+# Make executable
+RUN chmod +x ./bin/pokemon-quant
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+# Start server
+CMD ["npm", "start"]

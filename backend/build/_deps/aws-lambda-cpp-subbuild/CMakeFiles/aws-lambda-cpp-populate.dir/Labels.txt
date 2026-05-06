@@ -1,0 +1,14 @@
+# Target labels
+ aws-lambda-cpp-populate
+# Source files and their labels
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/CMakeFiles/aws-lambda-cpp-populate
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/CMakeFiles/aws-lambda-cpp-populate.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/CMakeFiles/aws-lambda-cpp-populate-complete.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-build.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-configure.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-download.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-install.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-mkdir.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-patch.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-test.rule
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/_deps/aws-lambda-cpp-subbuild/aws-lambda-cpp-populate-prefix/src/aws-lambda-cpp-populate-stamp/aws-lambda-cpp-populate-update.rule

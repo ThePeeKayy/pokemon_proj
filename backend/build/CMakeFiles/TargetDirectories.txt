@@ -1,0 +1,3 @@
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/pokemon-quant.dir
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/edit_cache.dir
+C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/rebuild_cache.dir
