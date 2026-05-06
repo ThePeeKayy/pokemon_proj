@@ -8,8 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/src/StatsModel.cpp" "CMakeFiles/pokemon-quant.dir/src/StatsModel.cpp.obj" "gcc" "CMakeFiles/pokemon-quant.dir/src/StatsModel.cpp.obj.d"
   "C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/src/main.cpp" "CMakeFiles/pokemon-quant.dir/src/main.cpp.obj" "gcc" "CMakeFiles/pokemon-quant.dir/src/main.cpp.obj.d"
+  "C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/src/scraper.cpp" "CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj" "gcc" "CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj.d"
+  "C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/src/statsmodel.cpp" "CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj" "gcc" "CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

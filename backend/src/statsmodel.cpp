@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <ctime>
+#include <sstream> 
 
 namespace pokemon {
 
@@ -18,7 +19,9 @@ double StatsModel::calculate_sma_(size_t period) const {
     if (prices_.size() < period) return 0.0;
     
     double sum = 0.0;
-    for (size_t i = prices_.size() - period; i < prices_.size(); i++) {
+    // FIX: Use signed or explicit start point to avoid unsigned underflow
+    size_t start = prices_.size() - period;
+    for (size_t i = start; i < prices_.size(); i++) {
         sum += prices_[i].value;
     }
     return sum / period;
@@ -80,7 +83,9 @@ void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const 
     double std_dev = 0.0;
     
     size_t period = std::min(size_t(20), prices_.size());
-    for (size_t i = prices_.size() - period; i < prices_.size(); i++) {
+    // FIX: Explicitly calculate start to avoid unsigned underflow
+    size_t start = prices_.size() - period;
+    for (size_t i = start; i < prices_.size(); i++) {
         double delta = prices_[i].value - mean;
         std_dev += delta * delta;
     }
@@ -101,8 +106,10 @@ void StatsModel::calculate_macd_(double& macd, double& signal) const {
     double multiplier12 = 2.0 / 13.0;
     double multiplier26 = 2.0 / 27.0;
     
-    for (size_t i = prices_.size() - 26; i < prices_.size(); i++) {
-        if (i == prices_.size() - 26) {
+    // FIX: Explicitly calculate start to avoid unsigned underflow
+    size_t start = prices_.size() - 26;
+    for (size_t i = start; i < prices_.size(); i++) {
+        if (i == start) {
             ema12 = prices_[i].value;
             ema26 = prices_[i].value;
         } else {

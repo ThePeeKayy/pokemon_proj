@@ -1,62 +1,46 @@
-# Stage 1: Build C++ binary with libcurl on Linux
-FROM ubuntu:22.04 AS builder
+# AWS Lambda-Compatible Dockerfile
+# Uses public.ecr.aws/lambda/nodejs base image
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+FROM public.ecr.aws/lambda/nodejs:18 AS builder
+
+RUN yum install -y \
     cmake \
-    build-essential \
-    git \
-    libcurl4-openssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    gcc-c++ \
+    libcurl-devel \
+    && rm -rf /var/cache/yum/*
 
 WORKDIR /build
 
-# Copy C++ source files
+# Copy C++ source
 COPY backend/CMakeLists.txt .
 COPY backend/src/ ./src/
 COPY backend/include/ ./include/
 
-# Build with optimization
+# Build C++ binary
 RUN mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make && \
+    cmake --build . && \
     ls -lh pokemon-quant
 
-# Stage 2: Runtime container
-FROM node:18-slim
+# Stage 2: Lambda runtime
+FROM public.ecr.aws/lambda/nodejs:18
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libcurl4-openssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install runtime libcurl
+RUN yum install -y libcurl && rm -rf /var/cache/yum/*
 
-WORKDIR /app
+WORKDIR ${LAMBDA_TASK_ROOT}
 
-# Create bin directory for executable
-RUN mkdir -p bin
-
-# Copy C++ executable from builder
+# Copy C++ binary
 COPY --from=builder /build/build/pokemon-quant ./bin/pokemon-quant
-
-# Copy Node.js files
-COPY backend/package.json .
-COPY backend/server.js .
-
-# Copy frontend
-COPY frontend/ ./frontend/
-
-# Install Node dependencies
-RUN npm ci --only=production
-
-# Make executable
 RUN chmod +x ./bin/pokemon-quant
 
-# Expose port
-EXPOSE 3000
+# Copy Node files
+COPY backend/package.json .
+COPY backend/lambda.js .
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+# Install dependencies
+RUN npm ci --only=production
 
-# Start server
-CMD ["npm", "start"]
+# Lambda handler (not Express server!)
+CMD ["lambda.js.handler"]
