@@ -14,11 +14,11 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(express.json());
 
-app.get('/health', (req, res) => {
+app.get('http://localhost:3001/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-app.post('/api/analyze', (req, res) => {
+app.post('http://localhost:3001/api/analyze', (req, res) => {
     try {
         const now = Date.now();
         const timeSinceLastAnalyze = now - lastAnalyzeTime;
