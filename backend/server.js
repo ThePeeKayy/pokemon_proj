@@ -61,8 +61,8 @@ app.post('/api/analyze', (req, res) => {
         
         const timeout = setTimeout(() => {
             cpp.kill();
-            return res.status(500).json({ error: 'C++ process timeout (>10s)' });
-        }, 10000);
+            return res.status(500).json({ error: 'C++ process timeout (>30s)' });
+        }, 30000);
         
         cpp.stdout.on('data', (data) => {
             output += data.toString();

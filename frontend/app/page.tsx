@@ -108,7 +108,7 @@ const IMAGES: Record<string, string> = {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [backendAvailable, setBackendAvailable] = useState(false)
+  const [backendAvailable, setBackendAvailable] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [disabledUntil, setDisabledUntil] = useState(0)
 
@@ -195,7 +195,14 @@ const IMAGES: Record<string, string> = {
       if (!response?.ok) throw new Error(`Backend error ${response?.status}`)
       const data = await response?.json?.()
       if (!data || typeof data !== 'object') throw new Error('Invalid response')
-      setResults({ ...data, card_image: data?.card_image ?? getImage(cardName), prices, indicators: { ...data?.indicators } })
+      // Use only the specific indicators from backend response
+      const indicators = {
+        price: data?.price ?? data?.indicators?.price,
+        sma20: data?.sma20 ?? data?.indicators?.sma20,
+        bbands_upper: data?.bbands_upper ?? data?.indicators?.bbands_upper,
+        bbands_lower: data?.bbands_lower ?? data?.indicators?.bbands_lower,
+      }
+      setResults({ ...data, card_image: data?.card_image ?? getImage(cardName), prices, indicators })
       setBackendAvailable(true)
     } catch (err) {
       console.error(err)
@@ -213,15 +220,15 @@ const IMAGES: Record<string, string> = {
   const isPriceAboveSMA = currentPrice != null && sma20 != null && currentPrice > sma20
 
   const stats = [
-    { label: "RSI (14)", value: safeFormat(results?.indicators?.rsi, 1), desc: getRsiStatus(results?.indicators?.rsi).text, color: getRsiStatus(results?.indicators?.rsi).color, icon: Gauge },
-    { label: "Volatility", value: `${safeFormat(results?.indicators?.volatility, 1)}%`, desc: "Deviation", icon: BarChart3 },
-    { label: "MACD", value: safeFormat(results?.indicators?.macd, 2), desc: getMacdStatus(results?.indicators?.macd, results?.indicators?.signal_line).text, color: getMacdStatus(results?.indicators?.macd, results?.indicators?.signal_line).color, icon: TrendingUp },
+    { label: "SMA (20)", value: `$${safeFormat(results?.indicators?.sma20, 2)}`, desc: "Simple Moving Average", icon: TrendingUp },
+    { label: "BB Upper", value: `$${safeFormat(results?.indicators?.bbands_upper, 2)}`, desc: "Resistance", icon: TrendingUp },
+    { label: "BB Lower", value: `$${safeFormat(results?.indicators?.bbands_lower, 2)}`, desc: "Support", icon: TrendingDown },
     { label: "BB Width", value: `$${safeFormat((results?.indicators?.bbands_upper ?? 0) - (results?.indicators?.bbands_lower ?? 0), 2)}`, desc: "Spread", icon: Layers },
   ]
 
   return (
     <div className="min-h-screen w-full text-white overflow-hidden" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50" />
       <div className="relative h-screen w-full flex flex-col p-6">
         
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="flex justify-between items-center mb-4">
@@ -231,7 +238,6 @@ const IMAGES: Record<string, string> = {
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${backendAvailable ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-            <span className="text-xs text-white/50">{backendAvailable ? 'Backend: OK' : 'Backend: Offline'}</span>
           </div>
         </motion.div>
 
@@ -291,13 +297,14 @@ const IMAGES: Record<string, string> = {
                         <item.icon className="w-3 h-3 text-amber-200/60 mb-1" />
                         <p className="text-white/40 text-[8px] tracking-[0.15em] uppercase mb-0.5">{item.label}</p>
                         <p className="text-lg font-extralight text-white">{item.value}</p>
-                        <p className={`text-[8px] mt-0.5 ${item.color || "text-white/30"}`}>{item.desc}</p>
                       </div>
                     </motion.div>
                   ))}
                 </div>
-
-                <OptimizationCard />
+                
+                <div className="hidden sm:block">
+                  <OptimizationCard/>
+                </div>
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.4 }} className="text-center flex-shrink-0">
                   <p className="text-white/20 text-[9px] tracking-widest">Response time: <span className="text-amber-200/60">{safeFormat(results?.indicators.latency_ms, 1)}ms</span></p>
