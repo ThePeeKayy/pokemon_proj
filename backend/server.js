@@ -5,7 +5,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 
 let lastAnalyzeTime = 0;
 const ANALYZE_COOLDOWN = 6000;
