@@ -58,4 +58,4 @@ RUN npm install -g pnpm && pnpm install --production
 
 EXPOSE 3001 3000
 
-CMD ["sh", "-c", "cd /app/frontend && npm run start & cd /app/backend && node server.js"]
+CMD ["sh", "-c", "cd /app/frontend && npm run start & cd /app/backend && node server.js & wait"]
