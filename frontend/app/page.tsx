@@ -179,6 +179,7 @@ const IMAGES: Record<string, string> = {
       }
     }
     checkBackend()
+    analyzeCard()
   }, [])
 
   const analyzeCard = async () => {
@@ -198,9 +199,9 @@ const IMAGES: Record<string, string> = {
       // Use only the specific indicators from backend response
       const indicators = {
         price: data?.price ?? data?.indicators?.price,
-        sma20: data?.sma20 ?? data?.indicators?.sma20,
         bbands_upper: data?.bbands_upper ?? data?.indicators?.bbands_upper,
         bbands_lower: data?.bbands_lower ?? data?.indicators?.bbands_lower,
+        sma20: data?.sma20 ?? data?.indicators?.sma20,
         latency_ms: data?.latency_ms ?? data?.indicators?.latency_ms,
       }
       setResults({ ...data, card_image: data?.card_image ?? getImage(cardName), prices, indicators })
@@ -221,10 +222,11 @@ const IMAGES: Record<string, string> = {
   const isPriceAboveSMA = currentPrice != null && sma20 != null && currentPrice > sma20
 
   const stats = [
-    { label: "SMA (20)", value: `$${safeFormat(results?.indicators?.sma20, 2)}`, desc: "Simple Moving Average", icon: TrendingUp },
     { label: "BB Upper", value: `$${safeFormat(results?.indicators?.bbands_upper, 2)}`, desc: "Resistance", icon: TrendingUp },
     { label: "BB Lower", value: `$${safeFormat(results?.indicators?.bbands_lower, 2)}`, desc: "Support", icon: TrendingDown },
     { label: "BB Width", value: `$${safeFormat((results?.indicators?.bbands_upper ?? 0) - (results?.indicators?.bbands_lower ?? 0), 2)}`, desc: "Spread", icon: Layers },
+    { label: "SMA (20)", value: `$${safeFormat(results?.indicators?.sma20, 2)}`, desc: "Simple Moving Average", icon: TrendingUp },
+
   ]
 
   return (
