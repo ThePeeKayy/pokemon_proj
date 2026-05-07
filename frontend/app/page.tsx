@@ -201,6 +201,7 @@ const IMAGES: Record<string, string> = {
         sma20: data?.sma20 ?? data?.indicators?.sma20,
         bbands_upper: data?.bbands_upper ?? data?.indicators?.bbands_upper,
         bbands_lower: data?.bbands_lower ?? data?.indicators?.bbands_lower,
+        latency_ms: data?.latency_ms ?? data?.indicators?.latency_ms,
       }
       setResults({ ...data, card_image: data?.card_image ?? getImage(cardName), prices, indicators })
       setBackendAvailable(true)
@@ -228,7 +229,7 @@ const IMAGES: Record<string, string> = {
 
   return (
     <div className="min-h-screen w-full text-white overflow-hidden" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative h-screen w-full flex flex-col p-6">
         
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="flex justify-between items-center mb-4">
