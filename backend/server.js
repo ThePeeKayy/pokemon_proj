@@ -13,7 +13,7 @@ const ANALYZE_COOLDOWN = 6000; // 1 minute in milliseconds
 
 // Middleware
 app.use(cors());
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(express.json());
 
 // Health check endpoint
