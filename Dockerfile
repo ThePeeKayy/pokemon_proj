@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-bullseye AS builder
+FROM node:20-bullseye AS builder
 
 # Install C++ build tools
 RUN apt-get update && apt-get install -y \
@@ -11,15 +11,24 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy backend
+# Copy frontend files ONLY
+COPY frontend/package.json ./frontend/package.json
+COPY frontend/pnpm-lock.yaml ./frontend/pnpm-lock.yaml
+COPY frontend ./frontend
+
+# Copy backend files ONLY
+COPY backend/package.json ./backend/package.json
+COPY backend/pnpm-lock.yaml ./backend/pnpm-lock.yaml
 COPY backend ./backend
 
-WORKDIR /app/backend
-
-# Install Node dependencies
+# Build frontend
+WORKDIR /app/frontend
 RUN npm install -g pnpm && pnpm install
+RUN pnpm build
 
-# Build C++ executable
+# Build backend
+WORKDIR /app/backend
+RUN npm install -g pnpm && pnpm install
 RUN mkdir -p build && \
     cd build && \
     cmake -G "Unix Makefiles" .. && \
@@ -27,28 +36,26 @@ RUN mkdir -p build && \
     cd ..
 
 # Runtime stage
-FROM node:18-bullseye
+FROM node:20-bullseye
 
-# Install only runtime dependencies (smaller image)
 RUN apt-get update && apt-get install -y \
-    libcurl4-openssl \
+    libcurl4 \
+    ca-certificates \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy only built backend from builder
+COPY --from=builder /app/frontend/.next ./frontend/.next
+COPY --from=builder /app/frontend/public ./frontend/public
+COPY --from=builder /app/frontend/package.json ./frontend/package.json
+COPY --from=builder /app/frontend/node_modules ./frontend/node_modules
 COPY --from=builder /app/backend ./backend
-
-# Copy frontend (if exists)
-COPY frontend ./frontend
 
 WORKDIR /app/backend
 
-# Install production dependencies only
 RUN npm install -g pnpm && pnpm install --production
 
-# Expose port
-EXPOSE 3001
+EXPOSE 3001 3000
 
-# Start server
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "cd /app/frontend && npm run start & cd /app/backend && node server.js"]
