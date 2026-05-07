@@ -129,6 +129,7 @@ pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/main.cpp.obj
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/build.make
+pokemon-quant.exe: C:/msys64/mingw64/lib/libcurl.dll.a
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/linkLibs.rsp
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/objects1.rsp
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/link.txt

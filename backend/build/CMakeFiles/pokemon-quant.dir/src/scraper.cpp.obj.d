@@ -442,4 +442,41 @@ CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj: \
  C:/msys64/mingw64/include/c++/15.2.0/bits/regex.tcc \
  C:/msys64/mingw64/include/c++/15.2.0/bits/regex_executor.h \
  C:/msys64/mingw64/include/c++/15.2.0/bits/regex_executor.tcc \
- C:/msys64/mingw64/include/c++/15.2.0/iostream
+ C:/msys64/mingw64/include/c++/15.2.0/iostream \
+ C:/msys64/mingw64/include/c++/15.2.0/thread \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/std_thread.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/this_thread_sleep.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/chrono.h \
+ C:/msys64/mingw64/include/c++/15.2.0/ratio \
+ C:/msys64/mingw64/include/c++/15.2.0/cstdint \
+ C:/msys64/mingw64/include/c++/15.2.0/limits \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/parse_numbers.h \
+ C:/msys64/mingw64/include/c++/15.2.0/algorithm \
+ C:/msys64/mingw64/include/c++/15.2.0/pstl/glue_algorithm_defs.h \
+ C:/msys64/mingw64/include/c++/15.2.0/pstl/execution_defs.h \
+ C:/msys64/mingw64/include/c++/15.2.0/cmath \
+ C:/msys64/mingw64/include/math.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/specfun.h \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/gamma.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/special_function_util.h \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/bessel_function.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/beta_function.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/ell_integral.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/exp_integral.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/hypergeometric.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/legendre_function.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/modified_bessel_func.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/poly_hermite.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/poly_laguerre.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/tr1/riemann_zeta.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/future \
+ C:/msys64/mingw64/include/c++/15.2.0/mutex \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/std_mutex.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/unique_lock.h \
+ C:/msys64/mingw64/include/c++/15.2.0/condition_variable \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/atomic_base.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/atomic_lockfree_defines.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/atomic_futex.h \
+ C:/msys64/mingw64/include/c++/15.2.0/atomic \
+ C:/msys64/mingw64/include/c++/15.2.0/queue \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_queue.h

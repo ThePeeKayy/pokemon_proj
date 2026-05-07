@@ -1,27 +1,22 @@
-// backend/src/StatsModel.cpp - NO EXTERNAL DEPENDENCIES
+// backend/src/statsmodel_fast.cpp - MINIMAL PARALLEL INDICATORS
 
 #include "../include/statsmodel.h"
 #include <cmath>
 #include <algorithm>
 #include <ctime>
-#include <sstream> 
+#include <future>
 
 namespace pokemon {
 
 void StatsModel::add_price(double price) {
-    prices_.push_back({price, static_cast<uint32_t>(std::time(nullptr))});
-    if (prices_.size() > window_size_) {
-        prices_.erase(prices_.begin());
-    }
+    prices_.push_back({price, (uint32_t)std::time(nullptr)});
+    if (prices_.size() > window_size_) prices_.erase(prices_.begin());
 }
 
 double StatsModel::calculate_sma_(size_t period) const {
     if (prices_.size() < period) return 0.0;
-    
     double sum = 0.0;
-    // FIX: Use signed or explicit start point to avoid unsigned underflow
-    size_t start = prices_.size() - period;
-    for (size_t i = start; i < prices_.size(); i++) {
+    for (size_t i = prices_.size() - period; i < prices_.size(); i++) {
         sum += prices_[i].value;
     }
     return sum / period;
@@ -29,139 +24,110 @@ double StatsModel::calculate_sma_(size_t period) const {
 
 double StatsModel::calculate_volatility_() const {
     if (prices_.size() < 2) return 0.0;
-    
     double mean = 0.0;
-    for (const auto& p : prices_) {
-        mean += p.value;
-    }
+    for (const auto& p : prices_) mean += p.value;
     mean /= prices_.size();
-    
-    double variance = 0.0;
+    double var = 0.0;
     for (const auto& p : prices_) {
-        double delta = p.value - mean;
-        variance += delta * delta;
+        double d = p.value - mean;
+        var += d * d;
     }
-    variance /= prices_.size();
-    
-    double std_dev = std::sqrt(variance);
-    return (std_dev / mean) * 100.0;
+    return (std::sqrt(var / prices_.size()) / mean) * 100.0;
 }
 
 double StatsModel::calculate_rsi_() const {
     if (prices_.size() < 15) return 50.0;
-    
-    double up_sum = 0.0, down_sum = 0.0;
-    
+    double up = 0, down = 0;
     for (size_t i = 1; i < prices_.size(); i++) {
-        double change = prices_[i].value - prices_[i-1].value;
-        if (change > 0) {
-            up_sum += change;
-        } else {
-            down_sum += -change;
-        }
+        double ch = prices_[i].value - prices_[i-1].value;
+        if (ch > 0) up += ch;
+        else down += -ch;
     }
-    
-    double avg_up = up_sum / 14.0;
-    double avg_down = down_sum / 14.0;
-    
+    double avg_up = up / 14.0, avg_down = down / 14.0;
     if (avg_down == 0.0) return 100.0;
-    
-    double rs = avg_up / avg_down;
-    return 100.0 - (100.0 / (1.0 + rs));
+    return 100.0 - (100.0 / (1.0 + avg_up / avg_down));
 }
 
 void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const {
     double sma = calculate_sma_(20);
-    
-    if (prices_.empty()) {
-        upper = sma * 1.02;
-        lower = sma * 0.98;
-        return;
-    }
-    
-    double mean = sma;
-    double std_dev = 0.0;
+    if (prices_.empty()) { upper = sma * 1.02; lower = sma * 0.98; return; }
     
     size_t period = std::min(size_t(20), prices_.size());
-    // FIX: Explicitly calculate start to avoid unsigned underflow
-    size_t start = prices_.size() - period;
-    for (size_t i = start; i < prices_.size(); i++) {
-        double delta = prices_[i].value - mean;
-        std_dev += delta * delta;
+    double sd = 0;
+    for (size_t i = prices_.size() - period; i < prices_.size(); i++) {
+        double d = prices_[i].value - sma;
+        sd += d * d;
     }
-    std_dev = std::sqrt(std_dev / period);
-    
-    upper = mean + (2.0 * std_dev);
-    lower = mean - (2.0 * std_dev);
+    sd = std::sqrt(sd / period);
+    upper = sma + (2.0 * sd);
+    lower = sma - (2.0 * sd);
 }
 
 void StatsModel::calculate_macd_(double& macd, double& signal) const {
-    if (prices_.size() < 26) {
-        macd = 0.0;
-        signal = 0.0;
-        return;
-    }
+    if (prices_.size() < 26) { macd = signal = 0.0; return; }
     
-    double ema12 = 0.0, ema26 = 0.0;
-    double multiplier12 = 2.0 / 13.0;
-    double multiplier26 = 2.0 / 27.0;
+    double ema12 = 0, ema26 = 0;
+    double m12 = 2.0 / 13.0, m26 = 2.0 / 27.0;
     
-    // FIX: Explicitly calculate start to avoid unsigned underflow
-    size_t start = prices_.size() - 26;
-    for (size_t i = start; i < prices_.size(); i++) {
-        if (i == start) {
-            ema12 = prices_[i].value;
-            ema26 = prices_[i].value;
-        } else {
-            ema12 = prices_[i].value * multiplier12 + ema12 * (1.0 - multiplier12);
-            ema26 = prices_[i].value * multiplier26 + ema26 * (1.0 - multiplier26);
+    for (size_t i = prices_.size() - 26; i < prices_.size(); i++) {
+        if (i == prices_.size() - 26) { ema12 = ema26 = prices_[i].value; }
+        else {
+            ema12 = prices_[i].value * m12 + ema12 * (1.0 - m12);
+            ema26 = prices_[i].value * m26 + ema26 * (1.0 - m26);
         }
     }
-    
     macd = ema12 - ema26;
     signal = macd * 0.66;
 }
 
 StatsModel::MarketState StatsModel::get_state() const {
-    MarketState state{};
-    state.num_observations = prices_.size();
+    MarketState s{};
+    s.num_observations = prices_.size();
+    if (prices_.empty()) return s;
     
-    if (prices_.empty()) {
-        return state;
-    }
+    s.current_price = prices_.back().value;
     
-    state.current_price = prices_.back().value;
-    state.sma_20 = calculate_sma_(20);
-    state.rsi = calculate_rsi_();
-    state.volatility = calculate_volatility_();
+    // Launch all 5 indicators in parallel
+    auto rsi_f = std::async(std::launch::async, [this]() { return calculate_rsi_(); });
+    auto sma_f = std::async(std::launch::async, [this]() { return calculate_sma_(20); });
+    auto vol_f = std::async(std::launch::async, [this]() { return calculate_volatility_(); });
+    auto bb_f = std::async(std::launch::async, [this]() {
+        double u, l;
+        calculate_bollinger_bands_(u, l);
+        return std::make_pair(u, l);
+    });
+    auto mc_f = std::async(std::launch::async, [this]() {
+        double m, s;
+        calculate_macd_(m, s);
+        return std::make_pair(m, s);
+    });
     
-    calculate_bollinger_bands_(state.bbands_upper, state.bbands_lower);
-    calculate_macd_(state.macd, state.signal_line);
+    s.rsi = rsi_f.get();
+    s.sma_20 = sma_f.get();
+    s.volatility = vol_f.get();
+    auto bb = bb_f.get();
+    s.bbands_upper = bb.first;
+    s.bbands_lower = bb.second;
+    auto mc = mc_f.get();
+    s.macd = mc.first;
+    s.signal_line = mc.second;
     
-    state.buy_signal = (state.current_price < state.bbands_lower) || (state.rsi < 30);
-    state.sell_signal = (state.current_price > state.bbands_upper) || (state.rsi > 70);
+    s.buy_signal = (s.current_price < s.bbands_lower) || (s.rsi < 30);
+    s.sell_signal = (s.current_price > s.bbands_upper) || (s.rsi > 70);
     
-    return state;
+    return s;
 }
 
 std::string StatsModel::to_json() const {
-    auto state = get_state();
-    
+    auto s = get_state();
     std::ostringstream oss;
-    oss << "{"
-        << "\"price\":" << state.current_price << ","
-        << "\"rsi\":" << state.rsi << ","
-        << "\"sma20\":" << state.sma_20 << ","
-        << "\"bbands_upper\":" << state.bbands_upper << ","
-        << "\"bbands_lower\":" << state.bbands_lower << ","
-        << "\"macd\":" << state.macd << ","
-        << "\"signal_line\":" << state.signal_line << ","
-        << "\"volatility\":" << state.volatility << ","
-        << "\"buy_signal\":" << (state.buy_signal ? "true" : "false") << ","
-        << "\"sell_signal\":" << (state.sell_signal ? "true" : "false")
-        << "}";
-    
+    oss << "{\"price\":" << s.current_price << ",\"rsi\":" << s.rsi 
+        << ",\"sma20\":" << s.sma_20 << ",\"volatility\":" << s.volatility
+        << ",\"bbands_upper\":" << s.bbands_upper << ",\"bbands_lower\":" << s.bbands_lower
+        << ",\"macd\":" << s.macd << ",\"signal_line\":" << s.signal_line
+        << ",\"buy_signal\":" << (s.buy_signal ? "true" : "false")
+        << ",\"sell_signal\":" << (s.sell_signal ? "true" : "false") << "}";
     return oss.str();
 }
 
-} // namespace pokemon
+}

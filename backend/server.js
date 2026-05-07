@@ -7,6 +7,10 @@ const { spawn } = require('child_process');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Global rate limiting for /api/analyze
+let lastAnalyzeTime = 0;
+const ANALYZE_COOLDOWN = 6000; // 1 minute in milliseconds
+
 // Middleware
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -20,6 +24,23 @@ app.get('/health', (req, res) => {
 // API endpoint - calls C++ backend with card name
 app.post('/api/analyze', (req, res) => {
     try {
+        // Check global cooldown timer
+        const now = Date.now();
+        const timeSinceLastAnalyze = now - lastAnalyzeTime;
+        const timeRemaining = ANALYZE_COOLDOWN - timeSinceLastAnalyze;
+        
+        if (timeSinceLastAnalyze < ANALYZE_COOLDOWN) {
+            console.log(`[${new Date().toISOString()}] Rate limit hit. Remaining cooldown: ${Math.ceil(timeRemaining / 1000)}s`);
+            return res.status(429).json({ 
+                error: 'Analyze endpoint is on cooldown',
+                message: `Please wait ${Math.ceil(timeRemaining / 1000)} seconds before trying again`,
+                retry_after: Math.ceil(timeRemaining / 1000)
+            });
+        }
+        
+        // Update last analyze time
+        lastAnalyzeTime = now;
+        
         // Get card name from request body
         const cardName = req.body?.card_name || 'Charizard';
         
@@ -89,70 +110,66 @@ app.post('/api/analyze', (req, res) => {
         
         // Handle process exit
         cpp.on('close', (code) => {
-            clearTimeout(timeout);
-            
-            console.log('C++ exit code:', code);
-            
-            if (code !== 0) {
-                console.error('C++ exited with code:', code);
-                console.error('stderr:', stderr);
-                return res.status(500).json({ 
-                    error: 'C++ backend failed',
-                    code: code,
-                    details: stderr,
-                    hint: 'Exit code 3221225781 means missing DLL (likely libcurl.dll). Ensure MSYS2 PATH is set.'
-                });
-            }
-            
-            try {
-                // Parse JSON from output
-                const jsonMatch = output.match(/\{[\s\S]*\}/);
-                
-                if (jsonMatch) {
-                    const cppData = JSON.parse(jsonMatch[0]);
-                    console.log('C++ Response:', cppData);
-                    
-                    // FIX: Transform C++ output to match frontend expectations
-                    // Frontend expects: 
-                    // {
-                    //   card_name: "...",
-                    //   indicators: { price, rsi, sma20, volatility, ... }
-                    //   prices: [...]
-                    // }
-                    
-                    const transformedData = {
-                        card_name: cppData.card || cardName,
-                        indicators: {
-                            price: cppData.price ?? null,
-                            sma20: cppData.sma20 ?? null,
-                            rsi: cppData.rsi ?? null,
-                            volatility: cppData.volatility ?? null,
-                            bbands_upper: cppData.bbands_upper ?? null,
-                            bbands_lower: cppData.bbands_lower ?? null,
-                            macd: cppData.macd ?? null,
-                            signal_line: cppData.signal_line ?? null,
-                            buy_signal: cppData.buy_signal ?? false,
-                            sell_signal: cppData.sell_signal ?? false,
-                        }
-                    };
-                    
-                    console.log('Transformed Response:', transformedData);
-                    res.json(transformedData);
-                } else {
-                    console.error('No JSON found in output:', output);
-                    res.status(500).json({ 
-                        error: 'No JSON output from C++',
-                        output: output.substring(0, 500)
-                    });
-                }
-            } catch (e) {
-                console.error('Parse error:', e);
-                res.status(500).json({ 
-                    error: 'Failed to parse C++ output: ' + e.message,
-                    output: output.substring(0, 500)
-                });
-            }
+    clearTimeout(timeout);
+    
+    console.log('C++ exit code:', code);
+    
+    if (code !== 0) {
+        console.error('C++ exited with code:', code);
+        console.error('stderr:', stderr);
+        return res.status(500).json({ 
+            error: 'C++ backend failed',
+            code: code,
+            details: stderr,
         });
+    }
+    
+    try {
+        const jsonMatch = output.match(/\{[\s\S]*\}/);
+        
+        if (jsonMatch) {
+            const cppData = JSON.parse(jsonMatch[0]);
+            console.log('C++ Response:', cppData);
+            
+            const transformedData = {
+                card_name: cppData.card || cardName,
+                indicators: {
+                    price: cppData.price ?? null,
+                    sma20: cppData.sma20 ?? null,
+                    rsi: cppData.rsi ?? null,
+                    volatility: cppData.volatility ?? null,
+                    bbands_upper: cppData.bbands_upper ?? null,
+                    bbands_lower: cppData.bbands_lower ?? null,
+                    macd: cppData.macd ?? null,
+                    signal_line: cppData.signal_line ?? null,
+                    buy_signal: cppData.buy_signal ?? false,
+                    sell_signal: cppData.sell_signal ?? false,
+                    latency_ms: cppData.latency_ms ?? null,
+                }
+            };
+            
+            console.log('Transformed Response:', transformedData);
+            console.log('About to send response...');
+            
+            // Send response
+            res.json(transformedData);
+            console.log('Response sent successfully!');
+            
+        } else {
+            console.error('No JSON found in output:', output);
+            res.status(500).json({ 
+                error: 'No JSON output from C++',
+                output: output.substring(0, 500)
+            });
+        }
+    } catch (e) {
+        console.error('Parse error:', e);
+        res.status(500).json({ 
+            error: 'Failed to parse C++ output: ' + e.message,
+            output: output.substring(0, 500)
+        });
+    }
+});
         
         // Handle spawn error
         cpp.on('error', (err) => {
