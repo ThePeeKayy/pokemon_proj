@@ -180,9 +180,9 @@ export default function QuantAnalyzer() {
           transition={{ duration: 0.6 }}
           className="flex justify-between items-center mb-6"
         >
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">Pokémon Quant Analyzer</h1>
-            <p className="text-white/40 text-sm mt-1">Real-time market analysis with trading signals</p>
+          <div className="flex flex-row">
+            <img src="./oak.png" className="sm:h-[40px] sm:w-[40px] h-[55px] w-[55px]"/>
+            <h1 className="text-3xl font-bold tracking-tight">Oak's Collections <span className="text-sm font-normal">(quant analyzer)</span></h1>
           </div>
           <motion.button
             onClick={fetchMetrics}
