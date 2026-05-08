@@ -53,7 +53,7 @@ export default function QuantAnalyzer() {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(20000) })
+        const response = await fetch('https://pokemonproj-production.up.railway.app/health', { signal: AbortSignal.timeout(20000) })
         setBackendAvailable(response?.ok ?? false)
       } catch {
         setBackendAvailable(false)
@@ -103,7 +103,7 @@ export default function QuantAnalyzer() {
   const fetchMetrics = async () => {
     setMetricsLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/metrics')
+      const response = await fetch('https://pokemonproj-production.up.railway.app/api/metrics')
       if (!response.ok) throw new Error('Failed to fetch metrics')
       const data = await response.json()
       setMetricsData(data)
@@ -120,7 +120,7 @@ export default function QuantAnalyzer() {
   const regenerateMetrics = async (cardName:string) => {
     setMetricsLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/regenerate-metrics', {
+      const response = await fetch('https://pokemonproj-production.up.railway.app/api/regenerate-metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cardName: cardName }),
