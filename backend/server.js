@@ -9,9 +9,6 @@ const PORT = 3001;
 
 let lastAnalyzeTime = 0;
 const ANALYZE_COOLDOWN = 6000;
-
-// Override build directory if needed (set this if running from different location)
-// const BUILD_DIR = '/absolute/path/to/your/build';
 const BUILD_DIR = path.join(__dirname, 'build');
 
 app.use(cors());
@@ -22,99 +19,27 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Debug endpoint - shows paths and file existence
-app.get('/debug/paths', (req, res) => {
-    const metricsPath = path.join(BUILD_DIR, 'metrics.json');
-    const buildDir = BUILD_DIR;
-    const analyzerPath1 = path.join(BUILD_DIR, 'pokemon-quant.exe');
-    const analyzerPath2 = path.join(BUILD_DIR, 'pokemon-quant');
-    const exporterPath1 = path.join(BUILD_DIR, 'metrics-exporter.exe');
-    const exporterPath2 = path.join(BUILD_DIR, 'metrics-exporter');
-    
-    let buildContents = [];
-    try {
-        buildContents = fs.readdirSync(buildDir);
-    } catch (e) {
-        console.error('Error reading build dir:', e);
-    }
-    
-    res.json({
-        cwd: process.cwd(),
-        __dirname: __dirname,
-        buildDir: {
-            path: buildDir,
-            exists: fs.existsSync(buildDir),
-            contents: buildContents
-        },
-        metricsFile: {
-            path: metricsPath,
-            exists: fs.existsSync(metricsPath)
-        },
-        analyzerExe: {
-            paths_checked: [analyzerPath1, analyzerPath2],
-            found: fs.existsSync(analyzerPath1) ? analyzerPath1 : (fs.existsSync(analyzerPath2) ? analyzerPath2 : null)
-        },
-        exporterExe: {
-            paths_checked: [exporterPath1, exporterPath2],
-            found: fs.existsSync(exporterPath1) ? exporterPath1 : (fs.existsSync(exporterPath2) ? exporterPath2 : null)
-        }
-    });
-});
-
 // Metrics endpoint - returns metrics.json
 app.get('/api/metrics', (req, res) => {
     try {
         const metricsPath = path.join(BUILD_DIR, 'metrics.json');
         
         if (!fs.existsSync(metricsPath)) {
-            const defaultMetrics = {
-                timestamp: Math.floor(Date.now() / 1000),
-                overall: {
-                    mean_ms: 0.4222,
-                    p95_ms: 0.6629,
-                    p99_ms: 2.5750,
-                    is_regressed: false
-                },
-                indicators: {
-                    current_price: 557.5628,
-                    sma_20: 556.5306,
-                    rsi: 56.2521
-                },
-                algos: {
-                    mean_reversion: { buy: false, confidence: 0.0000 },
-                    momentum: { buy: false, momentum: 0.6968 }
-                }
-            };
-            
-            try {
-                const buildDir = path.join(__dirname, 'build');
-                if (!fs.existsSync(buildDir)) {
-                    fs.mkdirSync(buildDir, { recursive: true });
-                }
-                fs.writeFileSync(metricsPath, JSON.stringify(defaultMetrics, null, 2));
-            } catch (writeErr) {
-                // Ignore if can't write
-            }
+            return res.status(500).json({ error: 'No json file' });
         }
         
         const data = fs.readFileSync(metricsPath, 'utf-8');
         const metrics = JSON.parse(data);
-        
-        metrics.inference = {
-            status: metrics.overall?.is_regressed ? '⚠️ DEGRADED' : '✅ HEALTHY',
-            grade: 'A+',
-            recommendation: '🎯 System optimal'
-        };
-        
         res.json(metrics);
     } catch (e) {
-        res.status(500).json({ error: 'Failed to read metrics' });
+        res.status(500).json({ error: 'Failed to read metrics: ' + e.message });
     }
 });
 
 // Run metrics-exporter and regenerate metrics
 app.post('/api/regenerate-metrics', (req, res) => {
-    // Handle both Windows (.exe) and Unix executables
+    const cardName = req.body?.cardName || 'Charizard';
+
     let exporterPath = path.join(BUILD_DIR, 'metrics-exporter.exe');
     if (!fs.existsSync(exporterPath)) {
         exporterPath = path.join(BUILD_DIR, 'metrics-exporter');
@@ -126,20 +51,19 @@ app.post('/api/regenerate-metrics', (req, res) => {
             checked_paths: [
                 path.join(BUILD_DIR, 'metrics-exporter.exe'),
                 path.join(BUILD_DIR, 'metrics-exporter')
-            ],
-            build_dir_contents: fs.readdirSync(BUILD_DIR)
+            ]
         });
     }
     
-    console.log(`[${new Date().toISOString()}] Running metrics-exporter...`);
-    const exporter = spawn(exporterPath, []);
+    fs.chmodSync(exporterPath, 0o755);
+    
+    const exporter = spawn(exporterPath, [cardName], { cwd: BUILD_DIR });
     let output = '';
     let stderr = '';
     let responseSent = false;
     
-    // FIX: Check responseSent BEFORE trying to send response
     const timeout = setTimeout(() => {
-        if (!responseSent) {  // ✅ Check FIRST
+        if (!responseSent) {
             responseSent = true;
             exporter.kill();
             res.status(500).json({ error: 'timeout' });
@@ -152,21 +76,18 @@ app.post('/api/regenerate-metrics', (req, res) => {
     
     exporter.stderr.on('data', (data) => {
         stderr += data.toString();
-        console.log('[metrics-exporter stderr]:', data.toString());
     });
     
     exporter.on('close', (code) => {
-        clearTimeout(timeout);  // FIX: Kill the timeout callback
+        clearTimeout(timeout);
         
-        if (responseSent) return;  // FIX: Don't double-send
+        if (responseSent) return;
         
         if (code !== 0) {
             responseSent = true;
-            console.error('metrics-exporter exited with code:', code);
             return res.status(500).json({
                 error: 'metrics-exporter failed',
-                code: code,
-                stderr: stderr
+                code: code
             });
         }
         
@@ -175,7 +96,6 @@ app.post('/api/regenerate-metrics', (req, res) => {
             
             if (!fs.existsSync(metricsPath)) {
                 responseSent = true;
-                console.error('metrics.json not found after generation');
                 return res.status(500).json({ 
                     error: 'metrics.json not found after generation'
                 });
@@ -185,7 +105,6 @@ app.post('/api/regenerate-metrics', (req, res) => {
             const metrics = JSON.parse(data);
             
             responseSent = true;
-            console.log('Metrics regenerated successfully');
             res.json({
                 success: true,
                 message: 'Metrics regenerated successfully',
@@ -194,24 +113,21 @@ app.post('/api/regenerate-metrics', (req, res) => {
         } catch (e) {
             if (!responseSent) {
                 responseSent = true;
-                console.error('Parse error:', e);
                 res.status(500).json({ error: 'Failed to read metrics.json after generation: ' + e.message });
             }
         }
     });
     
     exporter.on('error', (err) => {
-        clearTimeout(timeout);  // FIX: Kill the timeout callback
+        clearTimeout(timeout);
         
         if (!responseSent) {
             responseSent = true;
-            console.error('Spawn error:', err);
             res.status(500).json({ error: 'Failed to start metrics-exporter: ' + err.message });
         }
     });
 });
 
-// Analyze endpoint - runs pokemon-quant C++ executable
 app.post('/api/analyze', (req, res) => {
     try {
         const now = Date.now();

@@ -33,6 +33,7 @@ RUN mkdir -p build && \
     cd build && \
     cmake -G "Unix Makefiles" .. && \
     cmake --build . && \
+    ./metrics-exporter Charizard && \
     cd ..
 
 # Runtime stage

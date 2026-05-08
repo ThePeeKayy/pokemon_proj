@@ -117,12 +117,13 @@ export default function QuantAnalyzer() {
   }
 
   // Regenerate metrics
-  const regenerateMetrics = async () => {
+  const regenerateMetrics = async (cardName:string) => {
     setMetricsLoading(true)
     try {
       const response = await fetch('http://localhost:3001/api/regenerate-metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardName: cardName }),
       })
       if (!response.ok) throw new Error('Failed to regenerate metrics')
       const data = await response.json()
@@ -160,6 +161,8 @@ export default function QuantAnalyzer() {
         cardName={cardName}
         onRegenerateMetrics={regenerateMetrics}
         regeneratingMetrics={metricsLoading}
+        onCardChange={setCardName}
+        availableCards={CARDS}
       />
     )
   }

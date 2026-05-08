@@ -25,6 +25,7 @@ public:
     };
     
     std::vector<Result> results;
+    std::string card_name = "Charizard";
     
     void run() {
         
@@ -44,8 +45,8 @@ private:
     std::vector<double> generate_real_prices(int count) {
         std::vector<double> prices;
         
-        // Get real price from API
-        double base_price = pokemon::Scraper::get_best_price("Charizard");
+        // Get real price from API using the specified card name
+        double base_price = pokemon::Scraper::get_best_price(card_name);
         
         if (base_price <= 0) base_price = 100.0;
         
@@ -236,8 +237,11 @@ private:
 
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    std::string card = argc > 1 ? argv[1] : "Charizard";
+    
     bench::RealBenchmark bench;
+    bench.card_name = card;
     bench.run();
     return 0;
 }
