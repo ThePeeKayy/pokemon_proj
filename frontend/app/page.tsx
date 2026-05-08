@@ -170,8 +170,8 @@ export default function QuantAnalyzer() {
   // Main analyzer page
   return (
     <div>
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-    <div className="min-h-screen w-full text-white overflow-hidden" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm pointer-events-none z-0" />
+      <div className="relative min-h-screen w-full text-white overflow-auto" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       <div className="relative h-screen w-full flex flex-col p-6">
         
         {/* Header with Analytics Button */}
