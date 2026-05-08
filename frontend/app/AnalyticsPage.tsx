@@ -83,7 +83,7 @@ export function AnalyticsPage({
               <span className="hidden sm:inline">Back</span>
             </button>
 
-            <h1 className="text-sm sm:text-base font-bold text-yellow-400 tracking-tight flex-shrink-0">Analytics</h1>
+            <h1 className="text-sm sm:text-base font-bold text-yellow-400 tracking-tight flex-shrink-0">Benchmark</h1>
           </div>
         </motion.div>
 

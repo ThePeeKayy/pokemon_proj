@@ -182,18 +182,18 @@ export default function QuantAnalyzer() {
           className="flex justify-between items-center mb-6"
         >
           <div className="flex flex-row">
-            <img src="./oak.png" className="sm:h-[40px] sm:w-[40px] h-[55px] w-[55px]"/>
-            <h1 className="sm:text-3xl text-xl font-bold tracking-tight">Oak's Collections <span className="text-sm font-normal">(quant analyzer)</span></h1>
+            <img src="./oak.png" className="sm:h-[70px] sm:w-[70px] h-[55px] w-[55px]"/>
+            <h1 className="sm:text-7xl text-xl font-bold tracking-tight">Oak's Collections <span className="text-sm font-normal">(quant analyzer)</span></h1>
           </div>
           <motion.button
             onClick={fetchMetrics}
             disabled={metricsLoading || !analyticsAvailable}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-black font-semibold rounded-lg hover:shadow-xl hover:shadow-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-black font-semibold rounded-lg hover:shadow-xl hover:shadow-yellow-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             <BarChart3 className="w-4 h-4" />
-            {metricsLoading ? "Loading..." : "Analytics"}
+            {metricsLoading ? "Loading..." : "Benchmark"}
           </motion.button>
         </motion.div>
 
@@ -217,7 +217,7 @@ export default function QuantAnalyzer() {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="relative bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden flex flex-col">
                 <div className="absolute top-3 left-3 z-10">
                   <p className="text-amber-200 text-xs tracking-[0.2em] uppercase font-medium">{results?.card_name ?? "Unknown"}</p>
-                  <p className="text-white/20 text-[10px] tracking-wider">Base Set</p>
+                  <p className="text-black text-[10px] tracking-wider">Base Set</p>
                 </div>
                 <div className="flex-1 min-h-0">
                   <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="w-6 h-6 border-2 border-amber-200/30 border-t-amber-200 rounded-full animate-spin" /></div>}>
@@ -237,7 +237,7 @@ export default function QuantAnalyzer() {
                 <StatsGrid stats={stats} />
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.4 }} className="text-center flex-shrink-0">
-                  <p className="text-black/40 text-[15px] tracking-widest">Response time: <span className="text-amber-200/60">{safeFormat(results?.indicators.latency_ms, 1)}ms</span></p>
+                  <p className="text-black/40 text-[15px] tracking-widest">Response time: <span className="text-yellow-500">{safeFormat(results?.indicators.latency_ms, 1)}ms</span></p>
                 </motion.div>
               </div>
             </motion.div>

@@ -64,12 +64,12 @@ export function Controls({
       <div className="relative">
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+          className="px-4 py-2 rounded-lg bg-black border text-white border-white/10 text-sm flex items-center gap-2 hover:bg-black/70 transition-colors"
         >
           {cardName}{" "}
           <svg
             className={`w-4 h-4 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-            fill="none"
+            fill="white"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
