@@ -148,7 +148,7 @@ export default function QuantAnalyzer() {
     { label: "BB Upper", value: `$${safeFormat(results?.indicators?.bbands_upper, 2)}`, desc: "Resistance", icon: TrendingUp },
     { label: "BB Lower", value: `$${safeFormat(results?.indicators?.bbands_lower, 2)}`, desc: "Support", icon: TrendingDown },
     { label: "BB Width", value: `$${safeFormat((results?.indicators?.bbands_upper ?? 0) - (results?.indicators?.bbands_lower ?? 0), 2)}`, desc: "Spread", icon: Layers },
-    { label: "SMA (20)", value: `$${safeFormat(results?.indicators?.sma20, 2)}`, desc: "Simple Moving Average", icon: TrendingUp },
+    { label: "SMA (20)", value: `$${safeFormat(results?.indicators?.sma20, 2)}`, desc: "Simple Moving Average", icon: Activity },
   ]
 
   // Analytics page

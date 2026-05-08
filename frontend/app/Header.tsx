@@ -102,7 +102,7 @@ export function Controls({
       <button
         onClick={onAnalyze}
         disabled={isDisabled}
-        className="px-6 py-2 bg-gradient-to-r from-amber-200 to-amber-100 text-black font-medium rounded-lg hover:shadow-lg hover:shadow-amber-200/20 transition-all disabled:opacity-50 text-sm"
+        className="px-6 py-2 bg-gradient-to-r from-amber-200 to-amber-100 text-black font-medium rounded-lg hover:shadow-lg hover:shadow-amber-200/20 transition-all disabled:opacity-50 text-sm min-w-[100px] text-center"
         title={isDisabled && timeRemaining > 0 ? `Wait ${timeRemaining}s` : ""}
       >
         {loading ? "Analyzing..." : isDisabled && timeRemaining > 0 ? `Wait ${timeRemaining}s` : "Analyze"}

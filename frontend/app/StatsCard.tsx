@@ -30,11 +30,10 @@ export function PriceCard({ currentPrice, sma20, pricePercentage, isPriceAboveSM
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 flex-shrink-0">
       <p className="text-white/40 text-[9px] tracking-[0.2em] uppercase mb-1">Market Price</p>
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-1">
         <span className="text-3xl font-extralight text-white">${safeFormat(currentPrice, 2)}</span>
         {pricePercentage != null && <span className={`text-xs ${isPriceAboveSMA ? "text-emerald-400" : "text-rose-400"}`}>{isPriceAboveSMA ? "+" : ""}{pricePercentage}%</span>}
       </div>
-      <p className="text-white/30 text-[9px] mt-1">vs SMA(20): ${safeFormat(sma20, 2)}</p>
     </motion.div>
   )
 }
