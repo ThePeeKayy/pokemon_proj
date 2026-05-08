@@ -1,3 +1,4 @@
-C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/pokemon-quant.dir
-C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/edit_cache.dir
-C:/Users/pengk/OneDrive/Desktop/pokemon_proj/backend/build/CMakeFiles/rebuild_cache.dir
+C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/CMakeFiles/pokemon-quant.dir
+C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/CMakeFiles/metrics-exporter.dir
+C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/CMakeFiles/edit_cache.dir
+C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/CMakeFiles/rebuild_cache.dir

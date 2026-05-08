@@ -53,20 +53,22 @@ RM = C:\msys64\mingw64\bin\cmake.exe -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend
+CMAKE_SOURCE_DIR = "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build
+CMAKE_BINARY_DIR = "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build"
 
 #=============================================================================
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
 all: CMakeFiles/pokemon-quant.dir/all
+all: CMakeFiles/metrics-exporter.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
 codegen: CMakeFiles/pokemon-quant.dir/codegen
+codegen: CMakeFiles/metrics-exporter.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -75,6 +77,7 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/pokemon-quant.dir/clean
+clean: CMakeFiles/metrics-exporter.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -84,14 +87,14 @@ clean: CMakeFiles/pokemon-quant.dir/clean
 CMakeFiles/pokemon-quant.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles --progress-num=1,2,3,4 "Built target pokemon-quant"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=5,6,7,8 "Built target pokemon-quant"
 .PHONY : CMakeFiles/pokemon-quant.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/pokemon-quant.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" 4
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/pokemon-quant.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" 0
 .PHONY : CMakeFiles/pokemon-quant.dir/rule
 
 # Convenience name for target.
@@ -101,13 +104,45 @@ pokemon-quant: CMakeFiles/pokemon-quant.dir/rule
 # codegen rule for target.
 CMakeFiles/pokemon-quant.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles --progress-num=1,2,3,4 "Finished codegen for target pokemon-quant"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=5,6,7,8 "Finished codegen for target pokemon-quant"
 .PHONY : CMakeFiles/pokemon-quant.dir/codegen
 
 # clean rule for target.
 CMakeFiles/pokemon-quant.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/clean
 .PHONY : CMakeFiles/pokemon-quant.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/metrics-exporter.dir
+
+# All Build rule for target.
+CMakeFiles/metrics-exporter.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=1,2,3,4 "Built target metrics-exporter"
+.PHONY : CMakeFiles/metrics-exporter.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/metrics-exporter.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" 4
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/metrics-exporter.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" 0
+.PHONY : CMakeFiles/metrics-exporter.dir/rule
+
+# Convenience name for target.
+metrics-exporter: CMakeFiles/metrics-exporter.dir/rule
+.PHONY : metrics-exporter
+
+# codegen rule for target.
+CMakeFiles/metrics-exporter.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=1,2,3,4 "Finished codegen for target metrics-exporter"
+.PHONY : CMakeFiles/metrics-exporter.dir/codegen
+
+# clean rule for target.
+CMakeFiles/metrics-exporter.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/clean
+.PHONY : CMakeFiles/metrics-exporter.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

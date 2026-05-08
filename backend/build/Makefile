@@ -56,10 +56,10 @@ RM = C:\msys64\mingw64\bin\cmake.exe -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend
+CMAKE_SOURCE_DIR = "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build
+CMAKE_BINARY_DIR = "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build"
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -86,9 +86,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\\CMakeFiles\progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\\CMakeFiles\progress.marks"
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\pengk\OneDrive\Desktop\pokemon_proj\backend\build\CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" 0
 .PHONY : all
 
 # The main clean target
@@ -128,6 +128,19 @@ pokemon-quant/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/build
 .PHONY : pokemon-quant/fast
 
+#=============================================================================
+# Target rules for targets named metrics-exporter
+
+# Build rule for target.
+metrics-exporter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 metrics-exporter
+.PHONY : metrics-exporter
+
+# fast build rule for target.
+metrics-exporter/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/build
+.PHONY : metrics-exporter/fast
+
 src/main.obj: src/main.cpp.obj
 .PHONY : src/main.obj
 
@@ -152,12 +165,37 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/metrics_exporter.obj: src/metrics_exporter.cpp.obj
+.PHONY : src/metrics_exporter.obj
+
+# target to build an object file
+src/metrics_exporter.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.obj
+.PHONY : src/metrics_exporter.cpp.obj
+
+src/metrics_exporter.i: src/metrics_exporter.cpp.i
+.PHONY : src/metrics_exporter.i
+
+# target to preprocess a source file
+src/metrics_exporter.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.i
+.PHONY : src/metrics_exporter.cpp.i
+
+src/metrics_exporter.s: src/metrics_exporter.cpp.s
+.PHONY : src/metrics_exporter.s
+
+# target to generate assembly for a file
+src/metrics_exporter.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.s
+.PHONY : src/metrics_exporter.cpp.s
+
 src/scraper.obj: src/scraper.cpp.obj
 .PHONY : src/scraper.obj
 
 # target to build an object file
 src/scraper.cpp.obj:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.obj
 .PHONY : src/scraper.cpp.obj
 
 src/scraper.i: src/scraper.cpp.i
@@ -166,6 +204,7 @@ src/scraper.i: src/scraper.cpp.i
 # target to preprocess a source file
 src/scraper.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.i
 .PHONY : src/scraper.cpp.i
 
 src/scraper.s: src/scraper.cpp.s
@@ -174,6 +213,7 @@ src/scraper.s: src/scraper.cpp.s
 # target to generate assembly for a file
 src/scraper.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.s
 .PHONY : src/scraper.cpp.s
 
 src/statsmodel.obj: src/statsmodel.cpp.obj
@@ -182,6 +222,7 @@ src/statsmodel.obj: src/statsmodel.cpp.obj
 # target to build an object file
 src/statsmodel.cpp.obj:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.obj
 .PHONY : src/statsmodel.cpp.obj
 
 src/statsmodel.i: src/statsmodel.cpp.i
@@ -190,6 +231,7 @@ src/statsmodel.i: src/statsmodel.cpp.i
 # target to preprocess a source file
 src/statsmodel.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.i
 .PHONY : src/statsmodel.cpp.i
 
 src/statsmodel.s: src/statsmodel.cpp.s
@@ -198,6 +240,7 @@ src/statsmodel.s: src/statsmodel.cpp.s
 # target to generate assembly for a file
 src/statsmodel.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.s
 .PHONY : src/statsmodel.cpp.s
 
 # Help Target
@@ -208,10 +251,14 @@ help:
 	@echo ... depend
 	@echo ... edit_cache
 	@echo ... rebuild_cache
+	@echo ... metrics-exporter
 	@echo ... pokemon-quant
 	@echo ... src/main.obj
 	@echo ... src/main.i
 	@echo ... src/main.s
+	@echo ... src/metrics_exporter.obj
+	@echo ... src/metrics_exporter.i
+	@echo ... src/metrics_exporter.s
 	@echo ... src/scraper.obj
 	@echo ... src/scraper.i
 	@echo ... src/scraper.s
