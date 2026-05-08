@@ -169,8 +169,9 @@ export default function QuantAnalyzer() {
 
   // Main analyzer page
   return (
+    <div>
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
     <div className="min-h-screen w-full text-white overflow-hidden" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative h-screen w-full flex flex-col p-6">
         
         {/* Header with Analytics Button */}
@@ -182,7 +183,7 @@ export default function QuantAnalyzer() {
         >
           <div className="flex flex-row">
             <img src="./oak.png" className="sm:h-[40px] sm:w-[40px] h-[55px] w-[55px]"/>
-            <h1 className="text-3xl font-bold tracking-tight">Oak's Collections <span className="text-sm font-normal">(quant analyzer)</span></h1>
+            <h1 className="sm:text-3xl text-xl font-bold tracking-tight">Oak's Collections <span className="text-sm font-normal">(quant analyzer)</span></h1>
           </div>
           <motion.button
             onClick={fetchMetrics}
@@ -248,6 +249,7 @@ export default function QuantAnalyzer() {
           )}
         </AnimatePresence>
       </div>
+    </div>
     </div>
   )
 }
