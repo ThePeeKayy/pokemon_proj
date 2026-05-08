@@ -12,7 +12,7 @@ const ANALYZE_COOLDOWN = 6000;
 const BUILD_DIR = path.join(__dirname, 'build');
 
 const lastRequestTime = new Map();
-const RATE_LIMIT_MS = 6000; // 6 seconds
+const RATE_LIMIT_MS = 1000; // 1 seconds
 
 const rateLimitMiddleware = (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
