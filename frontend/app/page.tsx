@@ -171,7 +171,7 @@ export default function QuantAnalyzer() {
   return (
     <div>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm pointer-events-none z-0" />
-      <div className="relative min-h-screen w-full text-white overflow-auto" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
+      <div className="relative min-h-screen w-full text-black overflow-auto" style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       <div className="relative h-screen w-full flex flex-col p-6">
         
         {/* Header with Analytics Button */}
@@ -217,7 +217,7 @@ export default function QuantAnalyzer() {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="relative bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden flex flex-col">
                 <div className="absolute top-3 left-3 z-10">
                   <p className="text-amber-200 text-xs tracking-[0.2em] uppercase font-medium">{results?.card_name ?? "Unknown"}</p>
-                  <p className="text-white/40 text-[10px] tracking-wider">Base Set</p>
+                  <p className="text-white/20 text-[10px] tracking-wider">Base Set</p>
                 </div>
                 <div className="flex-1 min-h-0">
                   <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="w-6 h-6 border-2 border-amber-200/30 border-t-amber-200 rounded-full animate-spin" /></div>}>
@@ -237,14 +237,14 @@ export default function QuantAnalyzer() {
                 <StatsGrid stats={stats} />
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.4 }} className="text-center flex-shrink-0">
-                  <p className="text-white/20 text-[15px] tracking-widest">Response time: <span className="text-amber-200/60">{safeFormat(results?.indicators.latency_ms, 1)}ms</span></p>
+                  <p className="text-black/40 text-[15px] tracking-widest">Response time: <span className="text-amber-200/60">{safeFormat(results?.indicators.latency_ms, 1)}ms</span></p>
                 </motion.div>
               </div>
             </motion.div>
           ) : (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 flex flex-col items-center justify-center">
               <Activity className="w-12 h-12 text-white/20 mb-4" />
-              <p className="text-white/40 text-sm">Select a Pokemon card and click Analyze</p>
+              <p className="text-black/40 text-sm">Select a Pokemon card and click Analyze</p>
             </motion.div>
           )}
         </AnimatePresence>
