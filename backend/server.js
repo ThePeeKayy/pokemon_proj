@@ -11,15 +11,53 @@ let lastAnalyzeTime = 0;
 const ANALYZE_COOLDOWN = 6000;
 const BUILD_DIR = path.join(__dirname, 'build');
 
+const lastRequestTime = new Map();
+const RATE_LIMIT_MS = 6000; // 6 seconds
+
+const rateLimitMiddleware = (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    
+    if (!lastRequestTime.has(ip)) {
+        lastRequestTime.set(ip, 0);
+    }
+    
+    const lastTime = lastRequestTime.get(ip);
+    const timeSinceLastRequest = now - lastTime;
+    
+    if (timeSinceLastRequest < RATE_LIMIT_MS) {
+        const waitTime = Math.ceil((RATE_LIMIT_MS - timeSinceLastRequest) / 1000);
+        console.warn(`⚠️  Rate limit hit for IP: ${ip}. Wait ${waitTime}s`);
+        return res.status(429).json({ 
+            error: 'Too many requests',
+            message: `Please wait ${waitTime} seconds before trying again`,
+            retry_after: waitTime
+        });
+    }
+    
+    lastRequestTime.set(ip, now);
+    next();
+};
+
+const VALID_POKEMON = [
+    'charizard',
+    'pikachu',
+    'mewtwo',
+    'blastoise',
+    'venusaur',
+    'gyarados'
+];
+
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(express.json());
+app.use(rateLimitMiddleware);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Metrics endpoint - returns metrics.json
+// Metrics endpoint
 app.get('/api/metrics', (req, res) => {
     try {
         const metricsPath = path.join(BUILD_DIR, 'metrics.json');
@@ -36,9 +74,17 @@ app.get('/api/metrics', (req, res) => {
     }
 });
 
-// Run metrics-exporter and regenerate metrics
+// Regenerate metrics
 app.post('/api/regenerate-metrics', (req, res) => {
-    const cardName = req.body?.cardName || 'Charizard';
+    let cardName = req.body?.cardName || 'Charizard';
+    
+    cardName = cardName.toLowerCase().trim();
+    if (!VALID_POKEMON.includes(cardName)) {
+        return res.status(400).json({ 
+            error: 'Invalid pokemon',
+            message: `Pokemon must be one of: ${VALID_POKEMON.join(', ')}`
+        });
+    }
 
     let exporterPath = path.join(BUILD_DIR, 'metrics-exporter.exe');
     if (!fs.existsSync(exporterPath)) {
@@ -128,6 +174,7 @@ app.post('/api/regenerate-metrics', (req, res) => {
     });
 });
 
+// Analyze endpoint
 app.post('/api/analyze', (req, res) => {
     try {
         const now = Date.now();
@@ -144,11 +191,18 @@ app.post('/api/analyze', (req, res) => {
         }
         
         lastAnalyzeTime = now;
-        const cardName = req.body?.card_name || 'Charizard';
+        let cardName = req.body?.card_name || 'Charizard';
+        
+        cardName = cardName.toLowerCase().trim();
+        if (!VALID_POKEMON.includes(cardName)) {
+            return res.status(400).json({ 
+                error: 'Invalid pokemon',
+                message: `Pokemon must be one of: ${VALID_POKEMON.join(', ')}`
+            });
+        }
         
         console.log(`[${new Date().toISOString()}] Analyzing: ${cardName}`);
         
-        // Handle both Windows (.exe) and Unix executables
         let exePath = path.join(BUILD_DIR, 'pokemon-quant.exe');
         if (!fs.existsSync(exePath)) {
             exePath = path.join(BUILD_DIR, 'pokemon-quant');
@@ -168,7 +222,6 @@ app.post('/api/analyze', (req, res) => {
             });
         }
         
-        // Make executable readable
         fs.chmodSync(exePath, 0o755);
         
         const cpp = spawn(exePath, [cardName]);
@@ -176,7 +229,6 @@ app.post('/api/analyze', (req, res) => {
         let stderr = '';
         let responseSent = false;
         
-        // FIX: Check responseSent BEFORE trying to send response
         const timeout = setTimeout(() => {
             if (!responseSent) {
                 responseSent = true;
@@ -195,9 +247,9 @@ app.post('/api/analyze', (req, res) => {
         });
         
         cpp.on('close', (code) => {
-            clearTimeout(timeout);  // FIX: Kill the timeout callback
+            clearTimeout(timeout);
             
-            if (responseSent) return;  // FIX: Don't double-send
+            if (responseSent) return;
             
             console.log('C++ exit code:', code);
             
@@ -257,7 +309,7 @@ app.post('/api/analyze', (req, res) => {
         });
         
         cpp.on('error', (err) => {
-            clearTimeout(timeout);  // FIX: Kill the timeout callback
+            clearTimeout(timeout);
             
             if (!responseSent) {
                 responseSent = true;
@@ -273,7 +325,7 @@ app.post('/api/analyze', (req, res) => {
         res.status(500).json({ error: 'Unexpected server error: ' + e.message });
     }
 });
-        
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
