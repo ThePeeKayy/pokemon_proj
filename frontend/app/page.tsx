@@ -69,7 +69,7 @@ export default function QuantAnalyzer() {
     setError(null)
     try {
       const prices = mockPrices()
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('https://pokemonproj-production.up.railway.app/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ card_name: cardName.trim(), prices }),
@@ -106,6 +106,7 @@ export default function QuantAnalyzer() {
       const response = await fetch('https://pokemonproj-production.up.railway.app/api/metrics')
       if (!response.ok) throw new Error('Failed to fetch metrics')
       const data = await response.json()
+      console.log('Fetched metrics:', data)
       setMetricsData(data)
       setCurrentPage('analytics')
     } catch (err) {
@@ -117,22 +118,37 @@ export default function QuantAnalyzer() {
   }
 
   // Regenerate metrics
-  const regenerateMetrics = async (cardName:string) => {
+  const regenerateMetrics = async (selectedCard: string) => {
     setMetricsLoading(true)
     try {
+      console.log(`Regenerating metrics for: ${selectedCard}`)
       const response = await fetch('https://pokemonproj-production.up.railway.app/api/regenerate-metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardName: cardName }),
+        body: JSON.stringify({ cardName: selectedCard }),
       })
-      if (!response.ok) throw new Error('Failed to regenerate metrics')
-      const data = await response.json()
-      if (data.metrics) {
-        setMetricsData(data.metrics)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(`Regeneration failed: ${JSON.stringify(errorData)}`)
       }
+      
+      const regenerateResponse = await response.json()
+      console.log('Regenerate response:', regenerateResponse)
+      
+      // Wait a moment for files to be written
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Now fetch the fresh metrics
+      const metricsResponse = await fetch('https://pokemonproj-production.up.railway.app/api/metrics')
+      if (!metricsResponse.ok) throw new Error('Failed to fetch new metrics')
+      
+      const newMetrics = await metricsResponse.json()
+      console.log('New metrics:', newMetrics)
+      setMetricsData(newMetrics)
     } catch (err) {
       console.error('Regenerate error:', err)
-      setError('Failed to regenerate metrics')
+      setError(`Failed to regenerate metrics: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setMetricsLoading(false)
     }

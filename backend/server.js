@@ -19,7 +19,7 @@ const rateLimitMiddleware = (req, res, next) => {
     const now = Date.now();
     
     if (!lastRequestTime.has(ip)) {
-        lastRequestTime.set(ip, 0);
+        lastRequestTime.set(ip, -Infinity);
     }
     
     const lastTime = lastRequestTime.get(ip);
@@ -51,30 +51,39 @@ const VALID_POKEMON = [
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(express.json());
-app.use(rateLimitMiddleware);
+
+// Only apply rate limiting to POST requests (API endpoints)
+app.use((req, res, next) => {
+    if (req.method === 'POST') {
+        rateLimitMiddleware(req, res, next);
+    } else {
+        next();
+    }
+});
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Metrics endpoint
 app.get('/api/metrics', (req, res) => {
     try {
         const metricsPath = path.join(BUILD_DIR, 'metrics.json');
+        const benchmarkPath = path.join(BUILD_DIR, 'benchmark.json');
         
-        if (!fs.existsSync(metricsPath)) {
-            return res.status(500).json({ error: 'No json file' });
-        }
+        const metrics = fs.existsSync(metricsPath) 
+            ? JSON.parse(fs.readFileSync(metricsPath, 'utf-8'))
+            : null;
         
-        const data = fs.readFileSync(metricsPath, 'utf-8');
-        const metrics = JSON.parse(data);
-        res.json(metrics);
+        const benchmark = fs.existsSync(benchmarkPath)
+            ? JSON.parse(fs.readFileSync(benchmarkPath, 'utf-8'))
+            : null;
+        
+        res.json({ metrics, benchmark });
     } catch (e) {
         res.status(500).json({ error: 'Failed to read metrics: ' + e.message });
     }
 });
 
-// Regenerate metrics
 app.post('/api/regenerate-metrics', (req, res) => {
     let cardName = req.body?.cardName || 'Charizard';
     
@@ -86,17 +95,17 @@ app.post('/api/regenerate-metrics', (req, res) => {
         });
     }
 
-    let exporterPath = path.join(BUILD_DIR, 'metrics-exporter.exe');
+    let exporterPath = path.join(BUILD_DIR, 'metrics-benchmark');
     if (!fs.existsSync(exporterPath)) {
-        exporterPath = path.join(BUILD_DIR, 'metrics-exporter');
+        exporterPath = path.join(BUILD_DIR, 'metrics-benchmark.exe');
     }
     
     if (!fs.existsSync(exporterPath)) {
         return res.status(500).json({ 
-            error: 'metrics-exporter not found',
+            error: 'metrics-benchmark not found',
             checked_paths: [
-                path.join(BUILD_DIR, 'metrics-exporter.exe'),
-                path.join(BUILD_DIR, 'metrics-exporter')
+                path.join(BUILD_DIR, 'metrics-benchmark'),
+                path.join(BUILD_DIR, 'metrics-benchmark.exe')
             ]
         });
     }
@@ -104,6 +113,7 @@ app.post('/api/regenerate-metrics', (req, res) => {
     fs.chmodSync(exporterPath, 0o755);
     
     const exporter = spawn(exporterPath, [cardName], { cwd: BUILD_DIR });
+    
     let output = '';
     let stderr = '';
     let responseSent = false;
@@ -132,34 +142,34 @@ app.post('/api/regenerate-metrics', (req, res) => {
         if (code !== 0) {
             responseSent = true;
             return res.status(500).json({
-                error: 'metrics-exporter failed',
+                error: 'metrics-benchmark failed',
                 code: code
             });
         }
         
         try {
             const metricsPath = path.join(BUILD_DIR, 'metrics.json');
-            
-            if (!fs.existsSync(metricsPath)) {
-                responseSent = true;
-                return res.status(500).json({ 
-                    error: 'metrics.json not found after generation'
-                });
-            }
-            
-            const data = fs.readFileSync(metricsPath, 'utf-8');
-            const metrics = JSON.parse(data);
-            
+            const benchmarkPath = path.join(BUILD_DIR, 'benchmark.json');
+
+            const metrics = fs.existsSync(metricsPath) 
+                ? JSON.parse(fs.readFileSync(metricsPath, 'utf-8'))
+                : null;
+
+            const benchmark = fs.existsSync(benchmarkPath)
+                ? JSON.parse(fs.readFileSync(benchmarkPath, 'utf-8'))
+                : null;
+
             responseSent = true;
             res.json({
                 success: true,
                 message: 'Metrics regenerated successfully',
-                metrics: metrics
+                metrics: metrics,
+                benchmark: benchmark
             });
         } catch (e) {
             if (!responseSent) {
                 responseSent = true;
-                res.status(500).json({ error: 'Failed to read metrics.json after generation: ' + e.message });
+                res.status(500).json({ error: 'Failed to read results.json: ' + e.message });
             }
         }
     });
@@ -169,7 +179,7 @@ app.post('/api/regenerate-metrics', (req, res) => {
         
         if (!responseSent) {
             responseSent = true;
-            res.status(500).json({ error: 'Failed to start metrics-exporter: ' + err.message });
+            res.status(500).json({ error: 'Failed to start metrics-benchmark: ' + err.message });
         }
     });
 });

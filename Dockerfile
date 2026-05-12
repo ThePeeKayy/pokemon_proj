@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     curl \
+    git \
     libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -31,9 +32,9 @@ WORKDIR /app/backend
 RUN npm install -g pnpm && pnpm install
 RUN mkdir -p build && \
     cd build && \
-    cmake -G "Unix Makefiles" .. && \
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. && \
     cmake --build . && \
-    ./metrics-exporter Charizard && \
+    if [ -f ./metrics-benchmark ]; then ./metrics-benchmark; else echo "Build failed"; exit 1; fi && \
     cd ..
 
 # Runtime stage
