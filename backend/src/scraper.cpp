@@ -1,5 +1,3 @@
-// backend/src/scraper.cpp - NO BOOST DEPENDENCY
-
 #include "../include/scraper.h"
 #include <iostream>
 #include <thread>
@@ -7,9 +5,13 @@
 #include <algorithm>
 #include <cmath>
 #include <future>
-#include <mutex>
-#include <queue>
+#include <atomic>
 #include <iomanip>
+#include <cctype>
+#include <cstring>
+#include <cstdlib>
+#include <array>
+#include <new>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -22,94 +24,191 @@
 
 namespace pokemon {
 
-static std::mutex prices_mutex;
-static std::vector<double> prices;
-static std::queue<CURL*> curl_pool;
-static const int POOL_SIZE = 8;
-static std::mutex pool_mutex;
+namespace {
 
-static size_t write_callback(void* contents, size_t size, size_t nmemb, std::string* s) {
-    s->append((char*)contents, size * nmemb);
-    return size * nmemb;
-}
+struct PoolNode {
+    CURL* handle;
+    PoolNode* next;
+};
 
-static void init_curl_pool() {
-    for (int i = 0; i < POOL_SIZE; i++) {
-        curl_pool.push(curl_easy_init());
+class CurlPool {
+public:
+    static CurlPool& instance() {
+        static CurlPool inst;
+        return inst;
     }
-}
 
-static CURL* get_curl() {
-    std::lock_guard<std::mutex> lock(pool_mutex);
-    if (!curl_pool.empty()) {
-        CURL* c = curl_pool.front();
-        curl_pool.pop();
-        return c;
+    CURL* acquire() noexcept {
+        PoolNode* head = head_.load(std::memory_order_acquire);
+        while (head) {
+            PoolNode* next = head->next;
+            if (head_.compare_exchange_weak(head, next,
+                    std::memory_order_acq_rel,
+                    std::memory_order_acquire)) {
+                CURL* h = head->handle;
+                push_free_node(head);
+                return h;
+            }
+        }
+        return curl_easy_init();
     }
-    return curl_easy_init();
-}
 
-static void return_curl(CURL* c) {
-    curl_easy_reset(c);
-    std::lock_guard<std::mutex> lock(pool_mutex);
-    if (curl_pool.size() < POOL_SIZE) curl_pool.push(c);
-    else curl_easy_cleanup(c);
-}
+    void release(CURL* h) noexcept {
+        if (!h) return;
+        curl_easy_reset(h);
+        if (size_.fetch_add(1, std::memory_order_relaxed) >= kPoolSize) {
+            size_.fetch_sub(1, std::memory_order_relaxed);
+            curl_easy_cleanup(h);
+            return;
+        }
+        PoolNode* node = pop_free_node();
+        if (!node) node = new PoolNode{};
+        node->handle = h;
+        PoolNode* head = head_.load(std::memory_order_relaxed);
+        do {
+            node->next = head;
+        } while (!head_.compare_exchange_weak(head, node,
+                    std::memory_order_release,
+                    std::memory_order_relaxed));
+    }
 
-static std::vector<double> extract_prices(const std::string& json) {
-    std::vector<double> p;
-    const char* patterns[] = {"price", "market", "lowestPrice", "value"};
-    
-    for (int pat = 0; pat < 4 && (int)p.size() < 30; pat++) {
-        size_t pos = 0;
-        const char* pattern = patterns[pat];
-        
-        while (pos < json.length() && (int)p.size() < 30) {
-            size_t found = json.find(pattern, pos);
-            if (found == std::string::npos) break;
-            
-            size_t colon = json.find(':', found);
-            if (colon == std::string::npos) {
-                pos = found + 1;
-                continue;
-            }
-            
-            size_t num_start = colon + 1;
-            while (num_start < json.length() && (json[num_start] == ' ' || json[num_start] == '\t')) {
-                num_start++;
-            }
-            
-            if (num_start >= json.length() || !isdigit(json[num_start])) {
-                pos = found + 1;
-                continue;
-            }
-            
-            size_t num_end = num_start;
-            while (num_end < json.length() && (isdigit(json[num_end]) || json[num_end] == '.')) {
-                num_end++;
-            }
-            
-            if (num_end > num_start) {
-                try {
-                    double price = std::stod(json.substr(num_start, num_end - num_start));
-                    if (price >= 5.0 && price <= 50000.0) {
-                        p.push_back(price);
-                    }
-                } catch (...) {}
-            }
-            
-            pos = num_end;
+private:
+    static constexpr int kPoolSize = 8;
+
+    CurlPool() {
+        for (int i = 0; i < kPoolSize; ++i) {
+            CURL* h = curl_easy_init();
+            if (!h) continue;
+            auto* n = new PoolNode{h, head_.load(std::memory_order_relaxed)};
+            head_.store(n, std::memory_order_release);
+            size_.fetch_add(1, std::memory_order_relaxed);
         }
     }
-    
-    return p;
+
+    void push_free_node(PoolNode* n) noexcept {
+        PoolNode* head = free_head_.load(std::memory_order_relaxed);
+        do {
+            n->next = head;
+        } while (!free_head_.compare_exchange_weak(head, n,
+                    std::memory_order_release,
+                    std::memory_order_relaxed));
+    }
+    PoolNode* pop_free_node() noexcept {
+        PoolNode* head = free_head_.load(std::memory_order_acquire);
+        while (head) {
+            PoolNode* next = head->next;
+            if (free_head_.compare_exchange_weak(head, next,
+                    std::memory_order_acq_rel,
+                    std::memory_order_acquire)) {
+                return head;
+            }
+        }
+        return nullptr;
+    }
+
+    alignas(64) std::atomic<PoolNode*> head_{nullptr};
+    alignas(64) std::atomic<PoolNode*> free_head_{nullptr};
+    alignas(64) std::atomic<int>       size_{0};
+};
+
+size_t write_callback(void* contents, size_t size, size_t nmemb, std::string* s) {
+    const size_t n = size * nmemb;
+    s->append(static_cast<const char*>(contents), n);
+    return n;
 }
 
-static void fetch_async(const std::string& url) {
-    CURL* curl = get_curl();
+std::vector<double> extract_prices(const std::string& json) {
+    std::vector<double> out;
+    out.reserve(30);
+
+    static constexpr std::array<const char*, 4> kKeys = {
+        "price", "market", "lowestPrice", "value"
+    };
+    static constexpr std::array<size_t, 4> kKeyLens = {5, 6, 11, 5};
+
+    const char* const data = json.data();
+    const size_t      len  = json.size();
+    size_t pos = 0;
+
+    while (pos < len && out.size() < 30) {
+        size_t best = std::string::npos;
+        size_t best_len = 0;
+        for (size_t k = 0; k < kKeys.size(); ++k) {
+            const size_t klen = kKeyLens[k];
+            if (pos + klen > len) continue;
+            const char* p = data + pos;
+            const char* end = data + len - klen + 1;
+            const char first = kKeys[k][0];
+            while (p < end) {
+                p = static_cast<const char*>(std::memchr(p, first, end - p));
+                if (!p) break;
+                if (std::memcmp(p, kKeys[k], klen) == 0) {
+                    size_t found = static_cast<size_t>(p - data);
+                    if (found < best) { best = found; best_len = klen; }
+                    break;
+                }
+                ++p;
+            }
+        }
+        if (best == std::string::npos) break;
+
+        size_t colon = json.find(':', best + best_len);
+        if (colon == std::string::npos) { pos = best + best_len; continue; }
+
+        size_t num_start = colon + 1;
+        while (num_start < len && (data[num_start] == ' ' || data[num_start] == '\t')) {
+            ++num_start;
+        }
+        if (num_start >= len || !std::isdigit(static_cast<unsigned char>(data[num_start]))) {
+            pos = best + best_len;
+            continue;
+        }
+        size_t num_end = num_start;
+        while (num_end < len &&
+              (std::isdigit(static_cast<unsigned char>(data[num_end])) || data[num_end] == '.')) {
+            ++num_end;
+        }
+        if (num_end > num_start) {
+            const char* num_ptr = data + num_start;
+            char* end_ptr = nullptr;
+            double price = std::strtod(num_ptr, &end_ptr);
+            if (end_ptr != num_ptr && static_cast<size_t>(end_ptr - data) == num_end &&
+                price >= 5.0 && price <= 50000.0) {
+                out.push_back(price);
+            }
+        }
+        pos = num_end;
+    }
+    return out;
+}
+
+struct PriceSink {
+    static constexpr size_t kCap = 30;
+    alignas(64) std::atomic<size_t> n{0};
+    alignas(64) std::array<double, kCap> buf{};
+
+    void push_many(const std::vector<double>& v) noexcept {
+        for (double x : v) {
+            size_t i = n.fetch_add(1, std::memory_order_relaxed);
+            if (i >= kCap) {
+                n.store(kCap, std::memory_order_relaxed);
+                return;
+            }
+            buf[i] = x;
+        }
+    }
+    size_t size() const noexcept {
+        size_t s = n.load(std::memory_order_acquire);
+        return s > kCap ? kCap : s;
+    }
+};
+
+void fetch_async(const std::string& url, PriceSink* sink) {
+    CURL* curl = CurlPool::instance().acquire();
     if (!curl) return;
-    
+
     std::string response;
+    response.reserve(8 * 1024);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
@@ -118,71 +217,63 @@ static void fetch_async(const std::string& url) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-    
+
     if (curl_easy_perform(curl) == CURLE_OK && !response.empty()) {
         auto extracted = extract_prices(response);
         if (!extracted.empty()) {
-            std::lock_guard<std::mutex> lock(prices_mutex);
-            for (double p : extracted) {
-                if ((int)prices.size() < 30) {
-                    prices.push_back(p);
-                }
-            }
+            sink->push_many(extracted);
         }
     }
-    return_curl(curl);
+    CurlPool::instance().release(curl);
 }
 
+} // namespace
+
+// Public API
+
 double Scraper::get_best_price(const std::string& card_name) {
-    static bool pool_init = false;
-    if (!pool_init) {
-        init_curl_pool();
-        pool_init = true;
-    }
-    
-    prices.clear();
-    prices.reserve(30);
-    
-    std::vector<std::future<void>> tasks;
-    tasks.reserve(3);
-    
-    std::vector<std::string> apis = {
+    PriceSink sink;
+
+    const std::array<std::string, 3> apis = {
         "https://api.tcgplayer.com/catalog/search?q=" + card_name + "+base+set",
         "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1",
         "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1&pageSize=250"
     };
-    
-    for (const auto& url : apis) {
-        tasks.push_back(std::async(std::launch::async, fetch_async, url));
+
+    std::array<std::future<void>, 3> tasks;
+    for (size_t i = 0; i < apis.size(); ++i) {
+        tasks[i] = std::async(std::launch::async, fetch_async, apis[i], &sink);
     }
-    
-    for (auto& t : tasks) {
-        t.wait_for(std::chrono::seconds(6));
-    }
-    
-    if ((int)prices.size() >= 5) {
+    for (auto& t : tasks) t.wait_for(std::chrono::seconds(6));
+
+    const size_t n = sink.size();
+    if (n >= 5) {
         double sum = 0.0;
-        for (double p : prices) sum += p;
-        double avg = sum / prices.size();
-        
+        for (size_t i = 0; i < n; ++i) sum += sink.buf[i];
+        const double avg = sum / static_cast<double>(n);
+
         double var = 0.0;
-        for (double p : prices) {
-            double d = p - avg;
+        for (size_t i = 0; i < n; ++i) {
+            const double d = sink.buf[i] - avg;
             var += d * d;
         }
-        double sd = std::sqrt(var / prices.size());
-        
-        std::cerr << "[SCRAPER] Extracted " << prices.size() << " prices, avg: $" 
-                  << std::fixed << std::setprecision(2) << avg 
+        const double sd = std::sqrt(var / static_cast<double>(n));
+
+        std::cerr << "[SCRAPER] Extracted " << n << " prices, avg: $"
+                  << std::fixed << std::setprecision(2) << avg
                   << ", stddev: $" << sd << std::endl;
         return avg;
     }
-    
-    return prices.empty() ? 127.50 : prices[0];
+
+    return n == 0 ? 127.50 : sink.buf[0];
 }
 
 double Scraper::get_ebay_price(const std::string& card_name) {
     return get_best_price(card_name);
 }
 
+double Scraper::get_ebay_price_with_retry(const std::string& card_name, int /*max_attempts*/) {
+    return get_best_price(card_name);
 }
+
+} // namespace pokemon

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(pokemon-quant)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -ffast-math -ffunction-sections -fdata-sections")

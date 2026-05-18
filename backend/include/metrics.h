@@ -1,5 +1,3 @@
-// backend/include/metrics.h - REAL-TIME PERFORMANCE MONITORING
-
 #pragma once
 
 #include <vector>
@@ -10,32 +8,79 @@
 #include <map>
 #include <sstream>
 #include <iomanip>
+#include <atomic>
+#include <array>
+#include <memory>
+#include <cstdint>
+#include <chrono>
+#include <limits>
 
 namespace pokemon {
 
 struct PerformanceMetric {
-    double latency_ms;
-    uint64_t timestamp_ns;
-    std::string indicator_type;  // "sma", "rsi", "volatility", etc.
-    size_t dataset_size;
-    bool cache_hit;
+    double      latency_ms;
+    uint64_t    timestamp_ns;
+    std::string indicator_type;
+    size_t      dataset_size;
+    bool        cache_hit;
 };
 
 class MetricsCollector {
 public:
-    MetricsCollector() : start_time_(std::time(nullptr)) {}
-    
-    void record_metric(double latency_ms, const std::string& indicator, size_t dataset_size, bool cache_hit = false) {
-        PerformanceMetric m{
-            latency_ms,
-            get_current_ns(),
-            indicator,
-            dataset_size,
-            cache_hit
-        };
-        metrics_.push_back(m);
+    static constexpr size_t kRingSize = 1u << 20;
+    static constexpr size_t kRingMask = kRingSize - 1;
+
+    MetricsCollector()
+        : start_time_(std::time(nullptr))
+        , ring_(new Slot[kRingSize])
+        , write_idx_(0)
+        , dropped_(0)
+    {}
+
+    void record_metric(double latency_ms,
+                       const std::string& indicator,
+                       size_t dataset_size,
+                       bool cache_hit = false)
+    {
+        const size_t idx = write_idx_.fetch_add(1, std::memory_order_relaxed);
+        if (idx >= kRingSize) [[unlikely]] {
+            write_idx_.store(kRingSize, std::memory_order_relaxed);
+            dropped_.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+
+        Slot& s = ring_[idx];
+        s.latency_ms     = latency_ms;
+        s.timestamp_ns   = get_current_ns();
+        s.indicator_type = indicator;
+        s.dataset_size   = dataset_size;
+        s.cache_hit      = cache_hit;
+        s.committed.store(true, std::memory_order_release);
+
+        auto& agg = aggregates_[indicator];
+        ++agg.count;
+        agg.sum    += latency_ms;
+        agg.sum_sq += latency_ms * latency_ms;
+        if (latency_ms < agg.min) agg.min = latency_ms;
+        if (latency_ms > agg.max) agg.max = latency_ms;
+        if (cache_hit) ++agg.cache_hits;
+        if (latency_ms <  1.0)  ++agg.below_1;
+        if (latency_ms <  5.0)  ++agg.below_5;
+        if (latency_ms < 10.0)  ++agg.below_10;
+        if (latency_ms >= 10.0) ++agg.above_10;
+
+        ++overall_.count;
+        overall_.sum    += latency_ms;
+        overall_.sum_sq += latency_ms * latency_ms;
+        if (latency_ms < overall_.min) overall_.min = latency_ms;
+        if (latency_ms > overall_.max) overall_.max = latency_ms;
+        if (cache_hit) ++overall_.cache_hits;
+        if (latency_ms <  1.0)  ++overall_.below_1;
+        if (latency_ms <  5.0)  ++overall_.below_5;
+        if (latency_ms < 10.0)  ++overall_.below_10;
+        if (latency_ms >= 10.0) ++overall_.above_10;
     }
-    
+
     struct AggregateStats {
         double mean_ms;
         double median_ms;
@@ -48,213 +93,201 @@ public:
         double stddev_ms;
         size_t count;
         double cache_hit_rate;
-        
-        // Regression detection
-        bool is_regressed;
-        double regression_severity;  // % change from baseline
+        bool   is_regressed;
+        double regression_severity;
         std::string baseline_comparison;
     };
-    
+
     AggregateStats compute_stats(const std::string& indicator_type = "") {
+        AggregateStats stats{};
+        const Running& agg = indicator_type.empty()
+            ? overall_
+            : (aggregates_.count(indicator_type)
+                ? aggregates_[indicator_type]
+                : Running{});
+
+        stats.count = agg.count;
+        if (agg.count == 0) return stats;
+
+        stats.min_ms = agg.min;
+        stats.max_ms = agg.max;
+        stats.mean_ms = agg.sum / static_cast<double>(agg.count);
+        const double var = agg.sum_sq / static_cast<double>(agg.count)
+                         - stats.mean_ms * stats.mean_ms;
+        stats.stddev_ms = std::sqrt(var > 0.0 ? var : 0.0);
+        stats.cache_hit_rate =
+            static_cast<double>(agg.cache_hits) / static_cast<double>(agg.count) * 100.0;
+
         std::vector<double> values;
-        size_t cache_hits = 0;
-        
-        for (const auto& m : metrics_) {
-            if (indicator_type.empty() || m.indicator_type == indicator_type) {
-                values.push_back(m.latency_ms);
-                if (m.cache_hit) cache_hits++;
+        values.reserve(agg.count);
+        const size_t end = std::min(write_idx_.load(std::memory_order_acquire), kRingSize);
+        for (size_t i = 0; i < end; ++i) {
+            const Slot& s = ring_[i];
+            if (!s.committed.load(std::memory_order_acquire)) continue;
+            if (indicator_type.empty() || s.indicator_type == indicator_type) {
+                values.push_back(s.latency_ms);
             }
         }
-        
-        AggregateStats stats{};
-        stats.count = values.size();
-        
-        if (values.empty()) {
-            return stats;
+        if (!values.empty()) {
+            std::sort(values.begin(), values.end());
+            stats.median_ms = values[values.size() / 2];
+            stats.p50_ms    = percentile(values, 0.50);
+            stats.p95_ms    = percentile(values, 0.95);
+            stats.p99_ms    = percentile(values, 0.99);
+            stats.p999_ms   = percentile(values, 0.999);
         }
-        
-        std::sort(values.begin(), values.end());
-        
-        stats.min_ms = values.front();
-        stats.max_ms = values.back();
-        stats.median_ms = values[values.size() / 2];
-        stats.p50_ms = percentile(values, 0.50);
-        stats.p95_ms = percentile(values, 0.95);
-        stats.p99_ms = percentile(values, 0.99);
-        stats.p999_ms = percentile(values, 0.999);
-        
-        double sum = 0.0;
-        for (double v : values) sum += v;
-        stats.mean_ms = sum / values.size();
-        
-        double sq_sum = 0.0;
-        for (double v : values) {
-            double diff = v - stats.mean_ms;
-            sq_sum += diff * diff;
-        }
-        stats.stddev_ms = std::sqrt(sq_sum / values.size());
-        
-        stats.cache_hit_rate = static_cast<double>(cache_hits) / values.size() * 100.0;
-        
-        // Regression detection: compare current P95 to baseline
         detect_regression(stats);
-        
         return stats;
     }
-    
+
     struct PerIndicatorStats {
         std::map<std::string, AggregateStats> indicator_stats;
         AggregateStats overall_stats;
         double total_calls;
         double total_time_ms;
     };
-    
+
     PerIndicatorStats compute_per_indicator_stats() {
         PerIndicatorStats result{};
         result.overall_stats = compute_stats();
-        result.total_calls = metrics_.size();
-        
-        // Collect unique indicator types without std::set
-        std::map<std::string, bool> indicator_set;
-        for (const auto& m : metrics_) {
-            indicator_set[m.indicator_type] = true;
+        result.total_calls   = static_cast<double>(overall_.count);
+        result.total_time_ms = overall_.sum;
+        for (const auto& [name, _] : aggregates_) {
+            result.indicator_stats[name] = compute_stats(name);
         }
-        
-        // Compute stats per indicator
-        for (const auto& [indicator, _] : indicator_set) {
-            result.indicator_stats[indicator] = compute_stats(indicator);
-        }
-        
-        // Sum total time
-        double total_time = 0.0;
-        for (const auto& m : metrics_) {
-            total_time += m.latency_ms;
-        }
-        result.total_time_ms = total_time;
-        
         return result;
     }
-    
+
     void clear() {
-        metrics_.clear();
+        write_idx_.store(0, std::memory_order_relaxed);
+        dropped_.store(0, std::memory_order_relaxed);
+        for (size_t i = 0; i < kRingSize; ++i) {
+            ring_[i].committed.store(false, std::memory_order_relaxed);
+        }
+        aggregates_.clear();
+        overall_ = Running{};
     }
-    
+
     size_t metric_count() const {
-        return metrics_.size();
+        return std::min(write_idx_.load(std::memory_order_acquire), kRingSize);
     }
-    
+
     std::string to_json() {
         auto per_indicator = compute_per_indicator_stats();
         std::ostringstream oss;
-        
         oss << std::fixed << std::setprecision(4);
         oss << "{";
         oss << "\"timestamp\":" << std::time(nullptr) << ",";
         oss << "\"uptime_seconds\":" << (std::time(nullptr) - start_time_) << ",";
         oss << "\"total_requests\":" << per_indicator.total_calls << ",";
         oss << "\"total_time_ms\":" << per_indicator.total_time_ms << ",";
-        
-        // Overall stats
+
         oss << "\"overall\":{";
-        oss << "\"mean_ms\":" << per_indicator.overall_stats.mean_ms << ",";
+        oss << "\"mean_ms\":"   << per_indicator.overall_stats.mean_ms << ",";
         oss << "\"median_ms\":" << per_indicator.overall_stats.median_ms << ",";
-        oss << "\"p95_ms\":" << per_indicator.overall_stats.p95_ms << ",";
-        oss << "\"p99_ms\":" << per_indicator.overall_stats.p99_ms << ",";
-        oss << "\"p999_ms\":" << per_indicator.overall_stats.p999_ms << ",";
-        oss << "\"min_ms\":" << per_indicator.overall_stats.min_ms << ",";
-        oss << "\"max_ms\":" << per_indicator.overall_stats.max_ms << ",";
+        oss << "\"p95_ms\":"    << per_indicator.overall_stats.p95_ms << ",";
+        oss << "\"p99_ms\":"    << per_indicator.overall_stats.p99_ms << ",";
+        oss << "\"p999_ms\":"   << per_indicator.overall_stats.p999_ms << ",";
+        oss << "\"min_ms\":"    << per_indicator.overall_stats.min_ms << ",";
+        oss << "\"max_ms\":"    << per_indicator.overall_stats.max_ms << ",";
         oss << "\"stddev_ms\":" << per_indicator.overall_stats.stddev_ms << ",";
         oss << "\"cache_hit_rate\":" << per_indicator.overall_stats.cache_hit_rate << ",";
         oss << "\"is_regressed\":" << (per_indicator.overall_stats.is_regressed ? "true" : "false") << ",";
         oss << "\"regression_severity\":" << per_indicator.overall_stats.regression_severity << ",";
         oss << "\"baseline_comparison\":\"" << per_indicator.overall_stats.baseline_comparison << "\"";
         oss << "},";
-        
-        // Per-indicator stats
+
         oss << "\"per_indicator\":{";
         bool first = true;
         for (const auto& [indicator, stats] : per_indicator.indicator_stats) {
             if (!first) oss << ",";
             oss << "\"" << indicator << "\":{";
             oss << "\"mean_ms\":" << stats.mean_ms << ",";
-            oss << "\"p95_ms\":" << stats.p95_ms << ",";
-            oss << "\"p99_ms\":" << stats.p99_ms << ",";
-            oss << "\"count\":" << stats.count << ",";
+            oss << "\"p95_ms\":"  << stats.p95_ms << ",";
+            oss << "\"p99_ms\":"  << stats.p99_ms << ",";
+            oss << "\"count\":"   << stats.count << ",";
             oss << "\"cache_hit_rate\":" << stats.cache_hit_rate;
             oss << "}";
             first = false;
         }
         oss << "},";
-        
-        // Throughput
-        double uptime = std::max(1.0, static_cast<double>(std::time(nullptr) - start_time_));
-        double throughput_ops_per_sec = per_indicator.total_calls / (uptime / 60.0);
-        
-        oss << "\"throughput_ops_per_min\":" << throughput_ops_per_sec << ",";
+
+        const double uptime = std::max(1.0,
+            static_cast<double>(std::time(nullptr) - start_time_));
+        const double throughput_ops_per_min =
+            per_indicator.total_calls / (uptime / 60.0);
+
+        oss << "\"throughput_ops_per_min\":" << throughput_ops_per_min << ",";
         oss << "\"latency_distribution\":{";
-        oss << "\"<1ms\":" << count_latencies_below(1.0) << ",";
-        oss << "\"<5ms\":" << count_latencies_below(5.0) << ",";
-        oss << "\"<10ms\":" << count_latencies_below(10.0) << ",";
-        oss << "\">10ms\":" << count_latencies_above(10.0);
+        oss << "\"<1ms\":"  << overall_.below_1 << ",";
+        oss << "\"<5ms\":"  << overall_.below_5 << ",";
+        oss << "\"<10ms\":" << overall_.below_10 << ",";
+        oss << "\">10ms\":" << overall_.above_10;
         oss << "}";
-        
+
         oss << "}";
         return oss.str();
     }
-    
+
 private:
-    std::vector<PerformanceMetric> metrics_;
-    std::time_t start_time_;
-    
-    // Baseline thresholds (from benchmarks)
+    struct Slot {
+        double      latency_ms{0.0};
+        uint64_t    timestamp_ns{0};
+        std::string indicator_type;
+        size_t      dataset_size{0};
+        bool        cache_hit{false};
+        std::atomic<bool> committed{false};
+    };
+
+    struct Running {
+        size_t count    = 0;
+        double sum      = 0.0;
+        double sum_sq   = 0.0;
+        double min      = std::numeric_limits<double>::infinity();
+        double max      = -std::numeric_limits<double>::infinity();
+        size_t cache_hits = 0;
+        size_t below_1   = 0;
+        size_t below_5   = 0;
+        size_t below_10  = 0;
+        size_t above_10  = 0;
+    };
+
+    std::time_t                  start_time_;
+    std::unique_ptr<Slot[]>      ring_;
+    alignas(64) std::atomic<size_t> write_idx_;
+    alignas(64) std::atomic<size_t> dropped_;
+    std::map<std::string, Running> aggregates_;
+    Running                      overall_;
+
     static constexpr double BASELINE_P95_MS = 2.0;
     static constexpr double BASELINE_P99_MS = 3.0;
-    
-    uint64_t get_current_ns() {
-        return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+    static uint64_t get_current_ns() noexcept {
+        return std::chrono::high_resolution_clock::now()
+                   .time_since_epoch().count();
     }
-    
-    double percentile(const std::vector<double>& sorted, double p) {
+
+    static double percentile(const std::vector<double>& sorted, double p) noexcept {
         if (sorted.empty()) return 0.0;
         size_t idx = static_cast<size_t>(sorted.size() * p);
         return sorted[std::min(idx, sorted.size() - 1)];
     }
-    
+
     void detect_regression(AggregateStats& stats) {
-        // Simple regression detection: if P95 > baseline * 1.5
         if (stats.p95_ms > BASELINE_P95_MS * 1.5) {
             stats.is_regressed = true;
-            stats.regression_severity = ((stats.p95_ms - BASELINE_P95_MS) / BASELINE_P95_MS) * 100.0;
-            
-            if (stats.regression_severity > 50) {
-                stats.baseline_comparison = "CRITICAL: +";
-            } else if (stats.regression_severity > 25) {
-                stats.baseline_comparison = "WARNING: +";
-            } else {
-                stats.baseline_comparison = "CAUTION: +";
-            }
-            stats.baseline_comparison += std::to_string(static_cast<int>(stats.regression_severity)) + "%";
+            stats.regression_severity =
+                ((stats.p95_ms - BASELINE_P95_MS) / BASELINE_P95_MS) * 100.0;
+            if (stats.regression_severity > 50)        stats.baseline_comparison = "CRITICAL: +";
+            else if (stats.regression_severity > 25)   stats.baseline_comparison = "WARNING: +";
+            else                                       stats.baseline_comparison = "CAUTION: +";
+            stats.baseline_comparison +=
+                std::to_string(static_cast<int>(stats.regression_severity)) + "%";
         } else {
             stats.is_regressed = false;
             stats.regression_severity = 0.0;
             stats.baseline_comparison = "HEALTHY";
         }
-    }
-    
-    size_t count_latencies_below(double threshold) {
-        size_t count = 0;
-        for (const auto& m : metrics_) {
-            if (m.latency_ms < threshold) count++;
-        }
-        return count;
-    }
-    
-    size_t count_latencies_above(double threshold) {
-        size_t count = 0;
-        for (const auto& m : metrics_) {
-            if (m.latency_ms >= threshold) count++;
-        }
-        return count;
     }
 };
 

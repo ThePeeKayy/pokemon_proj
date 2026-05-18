@@ -1,247 +1,190 @@
-// backend/src/statsmodel.cpp - SIMD OPTIMIZED
-
 #include "../include/statsmodel.h"
 #include <cmath>
 #include <algorithm>
 #include <ctime>
-#include <future>
 #include <immintrin.h>
 #include <iomanip>
+#include <cstring>
 
 namespace pokemon {
 
-void StatsModel::add_price(double price) {
-    prices_.push_back({price, static_cast<uint32_t>(std::time(nullptr))});
-    if (prices_.size() > window_size_) {
-        prices_.erase(prices_.begin());
-    }
+static inline double hsum256_pd(__m256d v) noexcept {
+    __m128d lo = _mm256_castpd256_pd128(v);
+    __m128d hi = _mm256_extractf128_pd(v, 1);
+    __m128d s  = _mm_add_pd(lo, hi);
+    __m128d sh = _mm_unpackhi_pd(s, s);
+    return _mm_cvtsd_f64(_mm_add_sd(s, sh));
 }
 
-// SIMD-accelerated SMA calculation
-double StatsModel::calculate_sma_(size_t period) const {
-    if (prices_.size() < period) return 0.0;
-    
-    size_t start = prices_.size() - period;
-    double sum = 0.0;
-    
-    // Process 4 doubles at a time with AVX2
-    size_t i = start;
-    const size_t end_simd = start + ((period / 4) * 4);
-    
-    __m256d sum_vec = _mm256_setzero_pd();
-    
-    for (; i < end_simd; i += 4) {
-        __m256d vals = _mm256_set_pd(
-            prices_[i+3].value,
-            prices_[i+2].value,
-            prices_[i+1].value,
-            prices_[i].value
-        );
-        sum_vec = _mm256_add_pd(sum_vec, vals);
-    }
-    
-    // Horizontal sum
-    double tmp[4];
-    _mm256_storeu_pd(tmp, sum_vec);
-    sum = tmp[0] + tmp[1] + tmp[2] + tmp[3];
-    
-    // Handle remainder
-    for (; i < prices_.size(); i++) {
-        sum += prices_[i].value;
-    }
-    
-    return sum / period;
+void StatsModel::add_price(double price) noexcept {
+    prices_[head_] = Price{price, static_cast<uint32_t>(std::time(nullptr))};
+    head_ = (head_ + 1) % window_size_;
+    if (count_ < window_size_) ++count_;
 }
 
-// SIMD-accelerated volatility
-double StatsModel::calculate_volatility_() const {
-    if (prices_.size() < 2) return 0.0;
-    
-    double mean = 0.0;
-    for (const auto& p : prices_) mean += p.value;
-    mean /= prices_.size();
-    
-    // SIMD variance calculation
-    __m256d mean_vec = _mm256_set1_pd(mean);
-    __m256d var_vec = _mm256_setzero_pd();
-    
+size_t StatsModel::linearize_tail(size_t period, double* out) const noexcept {
+    const size_t n = std::min(period, count_);
+    if (n == 0) return 0;
+    const size_t logical_start = count_ - n;
+    const size_t base = (count_ < window_size_) ? 0 : head_;
+    for (size_t i = 0; i < n; ++i) {
+        out[i] = prices_[(base + logical_start + i) % window_size_].value;
+    }
+    return n;
+}
+
+double StatsModel::calculate_sma_(size_t period) const noexcept {
+    if (count_ < period) return 0.0;
+
+    alignas(32) double buf[kMaxWindow];
+    const size_t n = linearize_tail(period, buf);
+
+    __m256d acc = _mm256_setzero_pd();
     size_t i = 0;
-    const size_t end_simd = (prices_.size() / 4) * 4;
-    
-    for (; i < end_simd; i += 4) {
-        __m256d vals = _mm256_set_pd(
-            prices_[i+3].value,
-            prices_[i+2].value,
-            prices_[i+1].value,
-            prices_[i].value
-        );
-        __m256d diff = _mm256_sub_pd(vals, mean_vec);
-        __m256d sq = _mm256_mul_pd(diff, diff);
-        var_vec = _mm256_add_pd(var_vec, sq);
+    const size_t simd_end = (n / 4) * 4;
+    for (; i < simd_end; i += 4) {
+        acc = _mm256_add_pd(acc, _mm256_load_pd(buf + i));
     }
-    
-    // Horizontal sum
-    double tmp[4];
-    _mm256_storeu_pd(tmp, var_vec);
-    double var = tmp[0] + tmp[1] + tmp[2] + tmp[3];
-    
-    // Handle remainder
-    for (; i < prices_.size(); i++) {
-        double d = prices_[i].value - mean;
+    double sum = hsum256_pd(acc);
+    for (; i < n; ++i) sum += buf[i];
+    return sum / static_cast<double>(period);
+}
+
+double StatsModel::calculate_volatility_() const noexcept {
+    if (count_ < 2) return 0.0;
+
+    alignas(32) double buf[kMaxWindow];
+    const size_t n = linearize_tail(count_, buf);
+
+    __m256d sum_v = _mm256_setzero_pd();
+    size_t i = 0;
+    const size_t simd_end = (n / 4) * 4;
+    for (; i < simd_end; i += 4) {
+        sum_v = _mm256_add_pd(sum_v, _mm256_load_pd(buf + i));
+    }
+    double sum = hsum256_pd(sum_v);
+    for (; i < n; ++i) sum += buf[i];
+    const double mean = sum / static_cast<double>(n);
+
+    const __m256d mean_v = _mm256_set1_pd(mean);
+    __m256d var_v = _mm256_setzero_pd();
+    i = 0;
+    for (; i < simd_end; i += 4) {
+        __m256d v = _mm256_load_pd(buf + i);
+        __m256d d = _mm256_sub_pd(v, mean_v);
+        var_v = _mm256_fmadd_pd(d, d, var_v);
+    }
+    double var = hsum256_pd(var_v);
+    for (; i < n; ++i) {
+        const double d = buf[i] - mean;
         var += d * d;
     }
-    
-    return (std::sqrt(var / prices_.size()) / mean) * 100.0;
+
+    return (std::sqrt(var / static_cast<double>(n)) / mean) * 100.0;
 }
 
-double StatsModel::calculate_rsi_() const {
-    if (prices_.size() < 15) return 50.0;
-    
+double StatsModel::calculate_rsi_() const noexcept {
+    if (count_ < 15) return 50.0;
+
+    alignas(32) double buf[kMaxWindow];
+    const size_t n = linearize_tail(count_, buf);
+
     double up = 0.0, down = 0.0;
-    for (size_t i = 1; i < prices_.size(); i++) {
-        double ch = prices_[i].value - prices_[i-1].value;
-        if (ch > 0.0) {
-            up += ch;
-        } else {
-            down -= ch;
-        }
+    for (size_t i = 1; i < n; ++i) {
+        const double ch = buf[i] - buf[i - 1];
+        up   += ch > 0.0 ? ch : 0.0;
+        down += ch < 0.0 ? -ch : 0.0;
     }
-    
-    double avg_up = up / 14.0;
-    double avg_down = down / 14.0;
-    
+    const double avg_up   = up   / 14.0;
+    const double avg_down = down / 14.0;
     if (avg_down == 0.0) return 100.0;
     return 100.0 - (100.0 / (1.0 + avg_up / avg_down));
 }
 
-void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const {
-    double sma = calculate_sma_(20);
-    if (prices_.empty()) {
+void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const noexcept {
+    const double sma = calculate_sma_(20);
+    if (count_ == 0) {
         upper = sma * 1.02;
         lower = sma * 0.98;
         return;
     }
-    
-    size_t period = std::min(size_t(20), prices_.size());
-    size_t start = prices_.size() - period;
-    
-    double sd = 0.0;
-    double sum_sq = 0.0;
-    
-    // SIMD variance for bollinger bands
-    __m256d sma_vec = _mm256_set1_pd(sma);
-    __m256d sum_sq_vec = _mm256_setzero_pd();
-    
-    size_t i = start;
-    const size_t end_simd = start + ((period / 4) * 4);
-    
-    for (; i < end_simd; i += 4) {
-        __m256d vals = _mm256_set_pd(
-            prices_[i+3].value,
-            prices_[i+2].value,
-            prices_[i+1].value,
-            prices_[i].value
-        );
-        __m256d diff = _mm256_sub_pd(vals, sma_vec);
-        __m256d sq = _mm256_mul_pd(diff, diff);
-        sum_sq_vec = _mm256_add_pd(sum_sq_vec, sq);
+    const size_t period = std::min(static_cast<size_t>(20), count_);
+
+    alignas(32) double buf[kMaxWindow];
+    const size_t n = linearize_tail(period, buf);
+
+    const __m256d sma_v = _mm256_set1_pd(sma);
+    __m256d sum_sq_v = _mm256_setzero_pd();
+    size_t i = 0;
+    const size_t simd_end = (n / 4) * 4;
+    for (; i < simd_end; i += 4) {
+        __m256d v = _mm256_load_pd(buf + i);
+        __m256d d = _mm256_sub_pd(v, sma_v);
+        sum_sq_v = _mm256_fmadd_pd(d, d, sum_sq_v);
     }
-    
-    double tmp[4];
-    _mm256_storeu_pd(tmp, sum_sq_vec);
-    sum_sq = tmp[0] + tmp[1] + tmp[2] + tmp[3];
-    
-    for (; i < prices_.size(); i++) {
-        double d = prices_[i].value - sma;
+    double sum_sq = hsum256_pd(sum_sq_v);
+    for (; i < n; ++i) {
+        const double d = buf[i] - sma;
         sum_sq += d * d;
     }
-    
-    sd = std::sqrt(sum_sq / period);
-    upper = sma + (2.0 * sd);
-    lower = sma - (2.0 * sd);
+
+    const double sd = std::sqrt(sum_sq / static_cast<double>(period));
+    upper = sma + 2.0 * sd;
+    lower = sma - 2.0 * sd;
 }
 
-void StatsModel::calculate_macd_(double& macd, double& signal) const {
-    if (prices_.size() < 26) {
-        macd = signal = 0.0;
-        return;
+void StatsModel::calculate_macd_(double& macd, double& signal) const noexcept {
+    if (count_ < 26) { macd = signal = 0.0; return; }
+
+    alignas(32) double buf[kMaxWindow];
+    const size_t n = linearize_tail(26, buf); 
+
+    constexpr double m12     = 2.0 / 13.0;
+    constexpr double m26     = 2.0 / 27.0;
+    constexpr double m_inv12 = 1.0 - m12;
+    constexpr double m_inv26 = 1.0 - m26;
+
+    double ema12 = buf[0];
+    double ema26 = buf[0];
+    for (size_t i = 1; i < n; ++i) {
+        ema12 = buf[i] * m12 + ema12 * m_inv12;
+        ema26 = buf[i] * m26 + ema26 * m_inv26;
     }
-    
-    const double m12 = 2.0 / 13.0;
-    const double m26 = 2.0 / 27.0;
-    const double m_inv12 = 1.0 - m12;
-    const double m_inv26 = 1.0 - m26;
-    
-    double ema12 = prices_[prices_.size() - 26].value;
-    double ema26 = prices_[prices_.size() - 26].value;
-    
-    for (size_t i = prices_.size() - 25; i < prices_.size(); i++) {
-        ema12 = prices_[i].value * m12 + ema12 * m_inv12;
-        ema26 = prices_[i].value * m26 + ema26 * m_inv26;
-    }
-    
-    macd = ema12 - ema26;
+    macd   = ema12 - ema26;
     signal = macd * 0.66;
 }
 
-StatsModel::MarketState StatsModel::get_state() const {
+StatsModel::MarketState StatsModel::get_state() const noexcept {
     MarketState s{};
-    s.num_observations = prices_.size();
-    
-    if (prices_.empty()) return s;
-    
-    s.current_price = prices_.back().value;
-    
-    // Launch all indicators in parallel
-    auto rsi_f = std::async(std::launch::async, [this]() { 
-        return calculate_rsi_(); 
-    });
-    auto sma_f = std::async(std::launch::async, [this]() { 
-        return calculate_sma_(20); 
-    });
-    auto vol_f = std::async(std::launch::async, [this]() { 
-        return calculate_volatility_(); 
-    });
-    auto bb_f = std::async(std::launch::async, [this]() {
-        double u, l;
-        calculate_bollinger_bands_(u, l);
-        return std::make_pair(u, l);
-    });
-    auto mc_f = std::async(std::launch::async, [this]() {
-        double m, s;
-        calculate_macd_(m, s);
-        return std::make_pair(m, s);
-    });
-    
-    s.rsi = rsi_f.get();
-    s.sma_20 = sma_f.get();
-    s.volatility = vol_f.get();
-    
-    auto bb = bb_f.get();
-    s.bbands_upper = bb.first;
-    s.bbands_lower = bb.second;
-    
-    auto mc = mc_f.get();
-    s.macd = mc.first;
-    s.signal_line = mc.second;
-    
-    s.buy_signal = (s.current_price < s.bbands_lower) || (s.rsi < 30);
+    s.num_observations = static_cast<uint32_t>(count_);
+    if (count_ == 0) return s;
+
+    s.current_price = at(count_ - 1);
+
+    // Serial execution: with N <= 50 the std::async fan-out cost (10-100 us
+    // per spawn) was 100-1000x the compute (10-100 ns per indicator).
+    s.rsi        = calculate_rsi_();
+    s.sma_20     = calculate_sma_(20);
+    s.volatility = calculate_volatility_();
+    calculate_bollinger_bands_(s.bbands_upper, s.bbands_lower);
+    calculate_macd_(s.macd, s.signal_line);
+
+    s.buy_signal  = (s.current_price < s.bbands_lower) || (s.rsi < 30);
     s.sell_signal = (s.current_price > s.bbands_upper) || (s.rsi > 70);
-    
     return s;
 }
 
 std::string StatsModel::to_json() const {
-    auto s = get_state();
+    const auto s = get_state();
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(4);
-    oss << "{\"price\":" << s.current_price 
-        << ",\"rsi\":" << s.rsi 
-        << ",\"sma20\":" << s.sma_20 
+    oss << "{\"price\":" << s.current_price
+        << ",\"rsi\":" << s.rsi
+        << ",\"sma20\":" << s.sma_20
         << ",\"volatility\":" << s.volatility
-        << ",\"bbands_upper\":" << s.bbands_upper 
+        << ",\"bbands_upper\":" << s.bbands_upper
         << ",\"bbands_lower\":" << s.bbands_lower
-        << ",\"macd\":" << s.macd 
+        << ",\"macd\":" << s.macd
         << ",\"signal_line\":" << s.signal_line
         << ",\"buy_signal\":" << (s.buy_signal ? "true" : "false")
         << ",\"sell_signal\":" << (s.sell_signal ? "true" : "false") << "}";
