@@ -86,54 +86,21 @@ CMakeFiles/pokemon-quant.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pokemon-quant.dir/src/main.cpp.s"
 	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\main.cpp" -o CMakeFiles\pokemon-quant.dir\src\main.cpp.s
 
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj: CMakeFiles/pokemon-quant.dir/flags.make
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj: CMakeFiles/pokemon-quant.dir/includes_CXX.rsp
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj: C:/Users/pengk/OneDrive/Desktop/Completed\ Projects/pokemon_proj/backend/src/statsmodel.cpp
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj: CMakeFiles/pokemon-quant.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj -MF CMakeFiles\pokemon-quant.dir\src\statsmodel.cpp.obj.d -o CMakeFiles\pokemon-quant.dir\src\statsmodel.cpp.obj -c "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\statsmodel.cpp"
-
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\statsmodel.cpp" > CMakeFiles\pokemon-quant.dir\src\statsmodel.cpp.i
-
-CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\statsmodel.cpp" -o CMakeFiles\pokemon-quant.dir\src\statsmodel.cpp.s
-
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj: CMakeFiles/pokemon-quant.dir/flags.make
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj: CMakeFiles/pokemon-quant.dir/includes_CXX.rsp
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj: C:/Users/pengk/OneDrive/Desktop/Completed\ Projects/pokemon_proj/backend/src/scraper.cpp
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj: CMakeFiles/pokemon-quant.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj -MF CMakeFiles\pokemon-quant.dir\src\scraper.cpp.obj.d -o CMakeFiles\pokemon-quant.dir\src\scraper.cpp.obj -c "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\scraper.cpp"
-
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pokemon-quant.dir/src/scraper.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\scraper.cpp" > CMakeFiles\pokemon-quant.dir\src\scraper.cpp.i
-
-CMakeFiles/pokemon-quant.dir/src/scraper.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pokemon-quant.dir/src/scraper.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\src\scraper.cpp" -o CMakeFiles\pokemon-quant.dir\src\scraper.cpp.s
-
 # Object files for target pokemon-quant
 pokemon__quant_OBJECTS = \
-"CMakeFiles/pokemon-quant.dir/src/main.cpp.obj" \
-"CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj" \
-"CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj"
+"CMakeFiles/pokemon-quant.dir/src/main.cpp.obj"
 
 # External object files for target pokemon-quant
 pokemon__quant_EXTERNAL_OBJECTS =
 
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/main.cpp.obj
-pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj
-pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/build.make
+pokemon-quant.exe: libcore.a
 pokemon-quant.exe: C:/msys64/mingw64/lib/libcurl.dll.a
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/linkLibs.rsp
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/objects1.rsp
 pokemon-quant.exe: CMakeFiles/pokemon-quant.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable pokemon-quant.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable pokemon-quant.exe"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\pokemon-quant.dir\link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

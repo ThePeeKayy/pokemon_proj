@@ -1,10 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/pokemon-quant.dir/src/main.cpp.obj"
   "CMakeFiles/pokemon-quant.dir/src/main.cpp.obj.d"
-  "CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj"
-  "CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj.d"
-  "CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj"
-  "CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj.d"
   "libpokemon-quant.dll.a"
   "pokemon-quant.exe"
   "pokemon-quant.exe.manifest"

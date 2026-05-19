@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <mutex>
 #include <sstream>
 #include <iomanip>
 #include <atomic>
@@ -38,47 +39,41 @@ public:
     {}
 
     void record_metric(double latency_ms,
-                       const std::string& indicator,
-                       size_t dataset_size,
-                       bool cache_hit = false)
+                    const std::string& indicator,
+                    size_t dataset_size,
+                    bool cache_hit = false)
     {
-        const size_t idx = write_idx_.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= kRingSize) [[unlikely]] {
-            write_idx_.store(kRingSize, std::memory_order_relaxed);
-            dropped_.fetch_add(1, std::memory_order_relaxed);
-            return;
+        size_t idx = write_idx_.load(std::memory_order_relaxed);
+
+        while (true) {
+            if (idx >= kRingSize) {
+                dropped_.fetch_add(1, std::memory_order_relaxed);
+                return;
+            }
+
+            if (write_idx_.compare_exchange_weak(
+                    idx, idx + 1,
+                    std::memory_order_acq_rel,
+                    std::memory_order_relaxed)) {
+                break;
+            }
         }
 
         Slot& s = ring_[idx];
-        s.latency_ms     = latency_ms;
-        s.timestamp_ns   = get_current_ns();
+
+        s.latency_ms   = latency_ms;
+        s.timestamp_ns = get_current_ns();
+
         s.indicator_type = indicator;
-        s.dataset_size   = dataset_size;
-        s.cache_hit      = cache_hit;
+
+        s.dataset_size = dataset_size;
+        s.cache_hit    = cache_hit;
+
         s.committed.store(true, std::memory_order_release);
 
-        auto& agg = aggregates_[indicator];
-        ++agg.count;
-        agg.sum    += latency_ms;
-        agg.sum_sq += latency_ms * latency_ms;
-        if (latency_ms < agg.min) agg.min = latency_ms;
-        if (latency_ms > agg.max) agg.max = latency_ms;
-        if (cache_hit) ++agg.cache_hits;
-        if (latency_ms <  1.0)  ++agg.below_1;
-        if (latency_ms <  5.0)  ++agg.below_5;
-        if (latency_ms < 10.0)  ++agg.below_10;
-        if (latency_ms >= 10.0) ++agg.above_10;
-
-        ++overall_.count;
-        overall_.sum    += latency_ms;
-        overall_.sum_sq += latency_ms * latency_ms;
-        if (latency_ms < overall_.min) overall_.min = latency_ms;
-        if (latency_ms > overall_.max) overall_.max = latency_ms;
-        if (cache_hit) ++overall_.cache_hits;
-        if (latency_ms <  1.0)  ++overall_.below_1;
-        if (latency_ms <  5.0)  ++overall_.below_5;
-        if (latency_ms < 10.0)  ++overall_.below_10;
-        if (latency_ms >= 10.0) ++overall_.above_10;
+        std::lock_guard<std::mutex> lk(agg_mu_);
+        update_running(aggregates_[indicator], latency_ms, cache_hit);
+        update_running(overall_, latency_ms, cache_hit);
     }
 
     struct AggregateStats {
@@ -100,11 +95,17 @@ public:
 
     AggregateStats compute_stats(const std::string& indicator_type = "") {
         AggregateStats stats{};
-        const Running& agg = indicator_type.empty()
-            ? overall_
-            : (aggregates_.count(indicator_type)
-                ? aggregates_[indicator_type]
-                : Running{});
+
+        Running agg;
+        {
+            std::lock_guard<std::mutex> lk(agg_mu_);
+            if (indicator_type.empty()) {
+                agg = overall_;
+            } else {
+                auto it = aggregates_.find(indicator_type);  // no silent insert
+                if (it != aggregates_.end()) agg = it->second;
+            }
+        }
 
         stats.count = agg.count;
         if (agg.count == 0) return stats;
@@ -150,9 +151,16 @@ public:
     PerIndicatorStats compute_per_indicator_stats() {
         PerIndicatorStats result{};
         result.overall_stats = compute_stats();
-        result.total_calls   = static_cast<double>(overall_.count);
-        result.total_time_ms = overall_.sum;
-        for (const auto& [name, _] : aggregates_) {
+
+        std::vector<std::string> names;
+        {
+            std::lock_guard<std::mutex> lk(agg_mu_);
+            result.total_calls   = static_cast<double>(overall_.count);
+            result.total_time_ms = overall_.sum;
+            names.reserve(aggregates_.size());
+            for (const auto& [name, _] : aggregates_) names.push_back(name);
+        }
+        for (const auto& name : names) {
             result.indicator_stats[name] = compute_stats(name);
         }
         return result;
@@ -164,6 +172,7 @@ public:
         for (size_t i = 0; i < kRingSize; ++i) {
             ring_[i].committed.store(false, std::memory_order_relaxed);
         }
+        std::lock_guard<std::mutex> lk(agg_mu_);
         aggregates_.clear();
         overall_ = Running{};
     }
@@ -217,12 +226,22 @@ public:
         const double throughput_ops_per_min =
             per_indicator.total_calls / (uptime / 60.0);
 
+        // Snapshot histogram buckets under the lock.
+        size_t b1, b5, b10, a10;
+        {
+            std::lock_guard<std::mutex> lk(agg_mu_);
+            b1  = overall_.below_1;
+            b5  = overall_.below_5;
+            b10 = overall_.below_10;
+            a10 = overall_.above_10;
+        }
+
         oss << "\"throughput_ops_per_min\":" << throughput_ops_per_min << ",";
         oss << "\"latency_distribution\":{";
-        oss << "\"<1ms\":"  << overall_.below_1 << ",";
-        oss << "\"<5ms\":"  << overall_.below_5 << ",";
-        oss << "\"<10ms\":" << overall_.below_10 << ",";
-        oss << "\">10ms\":" << overall_.above_10;
+        oss << "\"<1ms\":"  << b1  << ",";
+        oss << "\"<5ms\":"  << b5  << ",";
+        oss << "\"<10ms\":" << b10 << ",";
+        oss << "\">10ms\":" << a10;
         oss << "}";
 
         oss << "}";
@@ -233,7 +252,7 @@ private:
     struct Slot {
         double      latency_ms{0.0};
         uint64_t    timestamp_ns{0};
-        std::string indicator_type;
+        std::string indicator_type;  
         size_t      dataset_size{0};
         bool        cache_hit{false};
         std::atomic<bool> committed{false};
@@ -252,18 +271,32 @@ private:
         size_t above_10  = 0;
     };
 
+    static void update_running(Running& r, double latency_ms, bool cache_hit) {
+        ++r.count;
+        r.sum    += latency_ms;
+        r.sum_sq += latency_ms * latency_ms;
+        if (latency_ms < r.min) r.min = latency_ms;
+        if (latency_ms > r.max) r.max = latency_ms;
+        if (cache_hit) ++r.cache_hits;
+        if (latency_ms <  1.0)  ++r.below_1;
+        if (latency_ms <  5.0)  ++r.below_5;
+        if (latency_ms < 10.0)  ++r.below_10;
+        if (latency_ms >= 10.0) ++r.above_10;
+    }
+
     std::time_t                  start_time_;
     std::unique_ptr<Slot[]>      ring_;
     alignas(64) std::atomic<size_t> write_idx_;
     alignas(64) std::atomic<size_t> dropped_;
+    mutable std::mutex             agg_mu_;
     std::map<std::string, Running> aggregates_;
-    Running                      overall_;
+    Running                        overall_;
 
     static constexpr double BASELINE_P95_MS = 2.0;
     static constexpr double BASELINE_P99_MS = 3.0;
 
     static uint64_t get_current_ns() noexcept {
-        return std::chrono::high_resolution_clock::now()
+        return std::chrono::steady_clock::now()
                    .time_since_epoch().count();
     }
 

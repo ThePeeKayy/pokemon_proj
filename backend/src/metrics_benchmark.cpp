@@ -100,14 +100,19 @@ static void export_metrics() {
     for (double l : c.bench_latencies) mean += l;
     if (!c.bench_latencies.empty()) mean /= c.bench_latencies.size();
 
+    auto pct = [&](double p) -> double {
+        if (c.bench_latencies.empty()) return 0.0;
+        size_t idx = static_cast<size_t>(c.bench_latencies.size() * p);
+        if (idx >= c.bench_latencies.size()) idx = c.bench_latencies.size() - 1;
+        return c.bench_latencies[idx];
+    };
+
     json metrics;
     metrics["timestamp"] = std::time(nullptr);
     metrics["overall"] = {
         {"mean_ms", mean},
-        {"p95_ms", c.bench_latencies.empty() ? 0.0 :
-            c.bench_latencies[(int)(c.bench_latencies.size() * 0.95)]},
-        {"p99_ms", c.bench_latencies.empty() ? 0.0 :
-            c.bench_latencies[(int)(c.bench_latencies.size() * 0.99)]},
+        {"p95_ms", pct(0.95)},
+        {"p99_ms", pct(0.99)},
         {"is_regressed", false}
     };
     metrics["indicators"] = {
@@ -133,14 +138,20 @@ static void export_benchmark_results() {
     for (double l : c.bench_latencies) mean += l;
     mean /= c.bench_latencies.size();
 
+    auto pct = [&](double p) -> double {
+        size_t idx = static_cast<size_t>(c.bench_latencies.size() * p);
+        if (idx >= c.bench_latencies.size()) idx = c.bench_latencies.size() - 1;
+        return c.bench_latencies[idx];
+    };
+
     json benchmarks;
     benchmarks["timestamp"]  = std::time(nullptr);
     benchmarks["iterations"] = c.bench_latencies.size();
     benchmarks["mean_ms"]    = mean;
     benchmarks["min_ms"]     = c.bench_latencies.front();
     benchmarks["max_ms"]     = c.bench_latencies.back();
-    benchmarks["p95_ms"]     = c.bench_latencies[(int)(c.bench_latencies.size() * 0.95)];
-    benchmarks["p99_ms"]     = c.bench_latencies[(int)(c.bench_latencies.size() * 0.99)];
+    benchmarks["p95_ms"]     = pct(0.95);
+    benchmarks["p99_ms"]     = pct(0.99);
 
     std::ofstream file("benchmark.json");
     file << benchmarks.dump(2);

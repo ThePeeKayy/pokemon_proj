@@ -37,6 +37,27 @@ export default function QuantAnalyzer() {
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [analyticsAvailable, setAnalyticsAvailable] = useState(false)
 
+  const [runningConcurrency, setRunningConcurrency] = useState(false)
+  const [runningCorrectness, setRunningCorrectness] = useState(false)
+
+  const onRunConcurrency = async () => {
+    setRunningConcurrency(true)
+    try {
+      const r = await fetch('/api/concurrency', { method: 'POST' })
+      const d = await r.json()
+      if (d.concurrency) setMetricsData((m: any) => ({ ...m, concurrency: d.concurrency }))
+    } finally { setRunningConcurrency(false) }
+  }
+
+  const onRunCorrectness = async () => {
+    setRunningCorrectness(true)
+    try {
+      const r = await fetch('/api/correctness', { method: 'POST' })
+      const d = await r.json()
+      setMetricsData((m: any) => ({ ...m, correctness: d }))
+    } finally { setRunningCorrectness(false) }
+  }
+
   // Cooldown timer
   useEffect(() => {
     if (disabledUntil === 0) return
@@ -179,6 +200,10 @@ export default function QuantAnalyzer() {
         regeneratingMetrics={metricsLoading}
         onCardChange={setCardName}
         availableCards={CARDS}
+        onRunConcurrency={onRunConcurrency}
+        runningConcurrency={runningConcurrency}
+        onRunCorrectness={onRunCorrectness}
+        runningCorrectness={runningCorrectness}
       />
     )
   }

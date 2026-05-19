@@ -84,6 +84,51 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	C:\msys64\mingw64\bin\cmake.exe -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	C:\msys64\mingw64\bin\cmake.exe -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	C:\msys64\mingw64\bin\cmake.exe -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	C:\msys64\mingw64\bin\cmake.exe -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	C:\msys64\mingw64\bin\cmake.exe -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	C:\msys64\mingw64\bin\cmake.exe -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\CMakeFiles" "C:\Users\pengk\OneDrive\Desktop\Completed Projects\pokemon_proj\backend\build\\CMakeFiles\progress.marks"
@@ -116,6 +161,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named core
+
+# Build rule for target.
+core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 core
+.PHONY : core
+
+# fast build rule for target.
+core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/build
+.PHONY : core/fast
+
+#=============================================================================
 # Target rules for targets named pokemon-quant
 
 # Build rule for target.
@@ -129,17 +187,93 @@ pokemon-quant/fast:
 .PHONY : pokemon-quant/fast
 
 #=============================================================================
-# Target rules for targets named metrics-exporter
+# Target rules for targets named metrics-benchmark
 
 # Build rule for target.
-metrics-exporter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 metrics-exporter
-.PHONY : metrics-exporter
+metrics-benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 metrics-benchmark
+.PHONY : metrics-benchmark
 
 # fast build rule for target.
-metrics-exporter/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/build
-.PHONY : metrics-exporter/fast
+metrics-benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-benchmark.dir\build.make CMakeFiles/metrics-benchmark.dir/build
+.PHONY : metrics-benchmark/fast
+
+#=============================================================================
+# Target rules for targets named bench-pool-comparison
+
+# Build rule for target.
+bench-pool-comparison: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 bench-pool-comparison
+.PHONY : bench-pool-comparison
+
+# fast build rule for target.
+bench-pool-comparison/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\bench-pool-comparison.dir\build.make CMakeFiles/bench-pool-comparison.dir/build
+.PHONY : bench-pool-comparison/fast
+
+#=============================================================================
+# Target rules for targets named test-metrics-concurrent
+
+# Build rule for target.
+test-metrics-concurrent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 test-metrics-concurrent
+.PHONY : test-metrics-concurrent
+
+# fast build rule for target.
+test-metrics-concurrent/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\test-metrics-concurrent.dir\build.make CMakeFiles/test-metrics-concurrent.dir/build
+.PHONY : test-metrics-concurrent/fast
+
+#=============================================================================
+# Target rules for targets named benchmark
+
+# Build rule for target.
+benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 benchmark
+.PHONY : benchmark
+
+# fast build rule for target.
+benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f _deps\benchmark-build\src\CMakeFiles\benchmark.dir\build.make _deps/benchmark-build/src/CMakeFiles/benchmark.dir/build
+.PHONY : benchmark/fast
+
+#=============================================================================
+# Target rules for targets named benchmark_main
+
+# Build rule for target.
+benchmark_main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 benchmark_main
+.PHONY : benchmark_main
+
+# fast build rule for target.
+benchmark_main/fast:
+	$(MAKE) $(MAKESILENT) -f _deps\benchmark-build\src\CMakeFiles\benchmark_main.dir\build.make _deps/benchmark-build/src/CMakeFiles/benchmark_main.dir/build
+.PHONY : benchmark_main/fast
+
+bench/bench_pool_comparison.obj: bench/bench_pool_comparison.cpp.obj
+.PHONY : bench/bench_pool_comparison.obj
+
+# target to build an object file
+bench/bench_pool_comparison.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\bench-pool-comparison.dir\build.make CMakeFiles/bench-pool-comparison.dir/bench/bench_pool_comparison.cpp.obj
+.PHONY : bench/bench_pool_comparison.cpp.obj
+
+bench/bench_pool_comparison.i: bench/bench_pool_comparison.cpp.i
+.PHONY : bench/bench_pool_comparison.i
+
+# target to preprocess a source file
+bench/bench_pool_comparison.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\bench-pool-comparison.dir\build.make CMakeFiles/bench-pool-comparison.dir/bench/bench_pool_comparison.cpp.i
+.PHONY : bench/bench_pool_comparison.cpp.i
+
+bench/bench_pool_comparison.s: bench/bench_pool_comparison.cpp.s
+.PHONY : bench/bench_pool_comparison.s
+
+# target to generate assembly for a file
+bench/bench_pool_comparison.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\bench-pool-comparison.dir\build.make CMakeFiles/bench-pool-comparison.dir/bench/bench_pool_comparison.cpp.s
+.PHONY : bench/bench_pool_comparison.cpp.s
 
 src/main.obj: src/main.cpp.obj
 .PHONY : src/main.obj
@@ -165,37 +299,36 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
-src/metrics_exporter.obj: src/metrics_exporter.cpp.obj
-.PHONY : src/metrics_exporter.obj
+src/metrics_benchmark.obj: src/metrics_benchmark.cpp.obj
+.PHONY : src/metrics_benchmark.obj
 
 # target to build an object file
-src/metrics_exporter.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.obj
-.PHONY : src/metrics_exporter.cpp.obj
+src/metrics_benchmark.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-benchmark.dir\build.make CMakeFiles/metrics-benchmark.dir/src/metrics_benchmark.cpp.obj
+.PHONY : src/metrics_benchmark.cpp.obj
 
-src/metrics_exporter.i: src/metrics_exporter.cpp.i
-.PHONY : src/metrics_exporter.i
+src/metrics_benchmark.i: src/metrics_benchmark.cpp.i
+.PHONY : src/metrics_benchmark.i
 
 # target to preprocess a source file
-src/metrics_exporter.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.i
-.PHONY : src/metrics_exporter.cpp.i
+src/metrics_benchmark.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-benchmark.dir\build.make CMakeFiles/metrics-benchmark.dir/src/metrics_benchmark.cpp.i
+.PHONY : src/metrics_benchmark.cpp.i
 
-src/metrics_exporter.s: src/metrics_exporter.cpp.s
-.PHONY : src/metrics_exporter.s
+src/metrics_benchmark.s: src/metrics_benchmark.cpp.s
+.PHONY : src/metrics_benchmark.s
 
 # target to generate assembly for a file
-src/metrics_exporter.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/metrics_exporter.cpp.s
-.PHONY : src/metrics_exporter.cpp.s
+src/metrics_benchmark.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-benchmark.dir\build.make CMakeFiles/metrics-benchmark.dir/src/metrics_benchmark.cpp.s
+.PHONY : src/metrics_benchmark.cpp.s
 
 src/scraper.obj: src/scraper.cpp.obj
 .PHONY : src/scraper.obj
 
 # target to build an object file
 src/scraper.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.obj
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/scraper.cpp.obj
 .PHONY : src/scraper.cpp.obj
 
 src/scraper.i: src/scraper.cpp.i
@@ -203,8 +336,7 @@ src/scraper.i: src/scraper.cpp.i
 
 # target to preprocess a source file
 src/scraper.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/scraper.cpp.i
 .PHONY : src/scraper.cpp.i
 
 src/scraper.s: src/scraper.cpp.s
@@ -212,8 +344,7 @@ src/scraper.s: src/scraper.cpp.s
 
 # target to generate assembly for a file
 src/scraper.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/scraper.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/scraper.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/scraper.cpp.s
 .PHONY : src/scraper.cpp.s
 
 src/statsmodel.obj: src/statsmodel.cpp.obj
@@ -221,8 +352,7 @@ src/statsmodel.obj: src/statsmodel.cpp.obj
 
 # target to build an object file
 src/statsmodel.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.obj
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/statsmodel.cpp.obj
 .PHONY : src/statsmodel.cpp.obj
 
 src/statsmodel.i: src/statsmodel.cpp.i
@@ -230,8 +360,7 @@ src/statsmodel.i: src/statsmodel.cpp.i
 
 # target to preprocess a source file
 src/statsmodel.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/statsmodel.cpp.i
 .PHONY : src/statsmodel.cpp.i
 
 src/statsmodel.s: src/statsmodel.cpp.s
@@ -239,9 +368,32 @@ src/statsmodel.s: src/statsmodel.cpp.s
 
 # target to generate assembly for a file
 src/statsmodel.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\pokemon-quant.dir\build.make CMakeFiles/pokemon-quant.dir/src/statsmodel.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\metrics-exporter.dir\build.make CMakeFiles/metrics-exporter.dir/src/statsmodel.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\core.dir\build.make CMakeFiles/core.dir/src/statsmodel.cpp.s
 .PHONY : src/statsmodel.cpp.s
+
+tests/test_metrics_concurrent.obj: tests/test_metrics_concurrent.cpp.obj
+.PHONY : tests/test_metrics_concurrent.obj
+
+# target to build an object file
+tests/test_metrics_concurrent.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\test-metrics-concurrent.dir\build.make CMakeFiles/test-metrics-concurrent.dir/tests/test_metrics_concurrent.cpp.obj
+.PHONY : tests/test_metrics_concurrent.cpp.obj
+
+tests/test_metrics_concurrent.i: tests/test_metrics_concurrent.cpp.i
+.PHONY : tests/test_metrics_concurrent.i
+
+# target to preprocess a source file
+tests/test_metrics_concurrent.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\test-metrics-concurrent.dir\build.make CMakeFiles/test-metrics-concurrent.dir/tests/test_metrics_concurrent.cpp.i
+.PHONY : tests/test_metrics_concurrent.cpp.i
+
+tests/test_metrics_concurrent.s: tests/test_metrics_concurrent.cpp.s
+.PHONY : tests/test_metrics_concurrent.s
+
+# target to generate assembly for a file
+tests/test_metrics_concurrent.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\test-metrics-concurrent.dir\build.make CMakeFiles/test-metrics-concurrent.dir/tests/test_metrics_concurrent.cpp.s
+.PHONY : tests/test_metrics_concurrent.cpp.s
 
 # Help Target
 help:
@@ -250,21 +402,36 @@ help:
 	@echo ... clean
 	@echo ... depend
 	@echo ... edit_cache
+	@echo ... install
+	@echo ... install/local
+	@echo ... install/strip
+	@echo ... list_install_components
 	@echo ... rebuild_cache
-	@echo ... metrics-exporter
+	@echo ... bench-pool-comparison
+	@echo ... benchmark
+	@echo ... benchmark_main
+	@echo ... core
+	@echo ... metrics-benchmark
 	@echo ... pokemon-quant
+	@echo ... test-metrics-concurrent
+	@echo ... bench/bench_pool_comparison.obj
+	@echo ... bench/bench_pool_comparison.i
+	@echo ... bench/bench_pool_comparison.s
 	@echo ... src/main.obj
 	@echo ... src/main.i
 	@echo ... src/main.s
-	@echo ... src/metrics_exporter.obj
-	@echo ... src/metrics_exporter.i
-	@echo ... src/metrics_exporter.s
+	@echo ... src/metrics_benchmark.obj
+	@echo ... src/metrics_benchmark.i
+	@echo ... src/metrics_benchmark.s
 	@echo ... src/scraper.obj
 	@echo ... src/scraper.i
 	@echo ... src/scraper.s
 	@echo ... src/statsmodel.obj
 	@echo ... src/statsmodel.i
 	@echo ... src/statsmodel.s
+	@echo ... tests/test_metrics_concurrent.obj
+	@echo ... tests/test_metrics_concurrent.i
+	@echo ... tests/test_metrics_concurrent.s
 .PHONY : help
 
 

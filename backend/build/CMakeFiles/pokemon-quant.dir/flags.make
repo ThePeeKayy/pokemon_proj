@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = @CMakeFiles/pokemon-quant.dir/includes_CXX.rsp
 
-CXX_FLAGS =  -mavx2 -mfma -std=gnu++20
+CXX_FLAGS = -std=gnu++20
 

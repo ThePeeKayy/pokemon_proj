@@ -8,7 +8,7 @@
 
 namespace pokemon {
 
-static inline double hsum256_pd(__m256d v) noexcept {
+__attribute__((target("avx2,fma"))) static inline double hsum256_pd(__m256d v) noexcept {
     __m128d lo = _mm256_castpd256_pd128(v);
     __m128d hi = _mm256_extractf128_pd(v, 1);
     __m128d s  = _mm_add_pd(lo, hi);
@@ -33,7 +33,7 @@ size_t StatsModel::linearize_tail(size_t period, double* out) const noexcept {
     return n;
 }
 
-double StatsModel::calculate_sma_(size_t period) const noexcept {
+__attribute__((target("avx2,fma"))) double StatsModel::calculate_sma_(size_t period) const noexcept {
     if (count_ < period) return 0.0;
 
     alignas(32) double buf[kMaxWindow];
@@ -50,7 +50,7 @@ double StatsModel::calculate_sma_(size_t period) const noexcept {
     return sum / static_cast<double>(period);
 }
 
-double StatsModel::calculate_volatility_() const noexcept {
+__attribute__((target("avx2,fma"))) double StatsModel::calculate_volatility_() const noexcept {
     if (count_ < 2) return 0.0;
 
     alignas(32) double buf[kMaxWindow];
@@ -87,7 +87,7 @@ double StatsModel::calculate_rsi_() const noexcept {
     if (count_ < 15) return 50.0;
 
     alignas(32) double buf[kMaxWindow];
-    const size_t n = linearize_tail(count_, buf);
+    const size_t n = linearize_tail(15, buf);
 
     double up = 0.0, down = 0.0;
     for (size_t i = 1; i < n; ++i) {
@@ -101,7 +101,7 @@ double StatsModel::calculate_rsi_() const noexcept {
     return 100.0 - (100.0 / (1.0 + avg_up / avg_down));
 }
 
-void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const noexcept {
+__attribute__((target("avx2,fma"))) void StatsModel::calculate_bollinger_bands_(double& upper, double& lower) const noexcept {
     const double sma = calculate_sma_(20);
     if (count_ == 0) {
         upper = sma * 1.02;
@@ -161,8 +161,6 @@ StatsModel::MarketState StatsModel::get_state() const noexcept {
 
     s.current_price = at(count_ - 1);
 
-    // Serial execution: with N <= 50 the std::async fan-out cost (10-100 us
-    // per spawn) was 100-1000x the compute (10-100 ns per indicator).
     s.rsi        = calculate_rsi_();
     s.sma_20     = calculate_sma_(20);
     s.volatility = calculate_volatility_();

@@ -37,6 +37,13 @@ if(NOT DEFINED CMAKE_OBJDUMP)
   set(CMAKE_OBJDUMP "C:/msys64/mingw64/bin/objdump.exe")
 endif()
 
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for each subdirectory.
+  include("C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/_deps/json-build/cmake_install.cmake")
+  include("C:/Users/pengk/OneDrive/Desktop/Completed Projects/pokemon_proj/backend/build/_deps/benchmark-build/cmake_install.cmake")
+
+endif()
+
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)

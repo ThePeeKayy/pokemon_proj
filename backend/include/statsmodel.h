@@ -22,7 +22,8 @@ inline constexpr size_t kMaxWindow = 256;
 class StatsModel {
 public:
     explicit StatsModel(size_t window_size = 50) noexcept
-        : window_size_(window_size > kMaxWindow ? kMaxWindow : window_size)
+        : window_size_(window_size == 0 ? 1
+                       : (window_size > kMaxWindow ? kMaxWindow : window_size))
         , head_(0)
         , count_(0)
     {}
@@ -124,6 +125,7 @@ public:
         if (n < 10) return {false, false, 0.0};
         const double back = prices[n - 1];
         const double ref  = prices[n - 10];
+        if (ref == 0.0) return {false, false, 0.0};
         const double mom = ((back - ref) / ref) * 100.0;
 
         Signal s{false, false, mom};
