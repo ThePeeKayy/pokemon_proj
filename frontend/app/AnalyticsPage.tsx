@@ -2,9 +2,10 @@
 
 import { motion } from "framer-motion"
 import { ArrowLeft, ChevronDown, CheckCircle2, XCircle, ShieldCheck, Activity } from "lucide-react"
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { CardScene } from "./PokemonCard3D"
 import { safeFormat } from "./utils"
+import { on } from "events"
 
 interface AnalyticsPageProps {
   metricsData: any
@@ -298,9 +299,13 @@ export function AnalyticsPage({
     onRegenerateMetrics(card)
   }
 
+  useEffect(() => {
+    onRegenerateMetrics(selectedCard)
+  }, [])
+
   return (
     <div
-      className="h-screen w-screen text-white overflow-hidden flex flex-col"
+      className="h-screen w-screen text-white overflow-hidden flex flex-col pb-2"
       style={{ backgroundImage: 'url(/background.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
     >
       {/* Header */}
