@@ -16,13 +16,14 @@ int main(int argc, char* argv[]) {
         const std::string card = argc > 1 ? argv[1] : "Charizard";
 
         pokemon::StatsModel model(50);
-        const double price = pokemon::Scraper::get_best_price(card);
+        const auto price_opt = pokemon::Scraper::get_best_price(card);
 
-        if (price <= 0) {
+        if (!price_opt.has_value()) {
             static constexpr double p[] =
                 {100, 101.5, 102.3, 101.8, 103.2, 104.1, 103.5, 105.0, 104.2, 106.0};
             for (double x : p) model.add_price(x);
         } else {
+            const double price = *price_opt;
             for (int i = 0; i < 20; ++i) {
                 model.add_price(price * (0.98 + i * 0.001));
             }

@@ -36,7 +36,9 @@ Result run_one(size_t num_threads, size_t per_thread) {
     auto worker = [&](unsigned seed) {
         std::mt19937 rng(seed);
         std::uniform_real_distribution<double> lat(0.1, 20.0);
-        const std::string indicators[] = {"rsi", "sma", "macd", "bbands"};
+        const Indicator indicators[] = {
+            Indicator::RSI, Indicator::SMA, Indicator::MACD, Indicator::BBANDS
+        };
         while (!go.load(std::memory_order_acquire)) { /* spin until start */ }
         for (size_t i = 0; i < per_thread; ++i) {
             m.record_metric(lat(rng), indicators[i & 3], 50, (i & 7) == 0);
@@ -52,8 +54,6 @@ Result run_one(size_t num_threads, size_t per_thread) {
     const auto t1 = std::chrono::steady_clock::now();
     r.wall_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
-    // Invariant 1: overall count matches expected (no dropped/double-counted records),
-    //              assuming the ring is large enough to hold everything.
     auto stats = m.compute_stats();
     r.observed_total = stats.count;
     if (r.expected_total <= MetricsCollector::kRingSize) {
@@ -66,10 +66,6 @@ Result run_one(size_t num_threads, size_t per_thread) {
         }
     }
 
-    // Invariant 2: sum of per-indicator counts == overall count.
-    // This is the one that catches the std::map race specifically: if two
-    // threads concurrently mutate aggregates_["rsi"], the increment is lost
-    // and per-indicator totals diverge from overall.
     auto per = m.compute_per_indicator_stats();
     size_t sum = 0;
     for (const auto& [name, s] : per.indicator_stats) sum += s.count;
@@ -81,7 +77,6 @@ Result run_one(size_t num_threads, size_t per_thread) {
         return r;
     }
 
-    // Invariant 3: no negative-looking stats (basic sanity).
     if (stats.mean_ms < 0.0 || stats.min_ms < 0.0 || stats.max_ms < stats.min_ms) {
         r.ok = false;
         r.reason = "stats sanity failed";
@@ -101,13 +96,13 @@ void emit_json(const std::vector<Result>& results) {
 #define __has_feature(x) 0
 #endif
 
-std::printf("  \"tsan\": %s,\n",
+    std::printf("  \"tsan\": %s,\n",
 #if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
-    "true"
+        "true"
 #else
-    "false"
+        "false"
 #endif
-);
+    );
     std::printf("  \"cases\": [\n");
     for (size_t i = 0; i < results.size(); ++i) {
         const auto& r = results[i];
@@ -127,7 +122,6 @@ std::printf("  \"tsan\": %s,\n",
 } // namespace
 
 int main(int argc, char** argv) {
-    // Light defaults so this runs in <1s in CI; bump on the command line for stress.
     size_t scale = 1;
     if (argc > 1) scale = std::max<size_t>(1, std::strtoul(argv[1], nullptr, 10));
 

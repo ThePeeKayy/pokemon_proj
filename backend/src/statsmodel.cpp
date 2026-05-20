@@ -133,6 +133,8 @@ __attribute__((target("avx2,fma"))) void StatsModel::calculate_bollinger_bands_(
     lower = sma - 2.0 * sd;
 }
 
+// NOTE: The signal line is conventionally a 9-period EMA of the MACD line.
+// This implementation uses a constant-scale approximation (macd * 0.66)
 void StatsModel::calculate_macd_(double& macd, double& signal) const noexcept {
     if (count_ < 26) { macd = signal = 0.0; return; }
 

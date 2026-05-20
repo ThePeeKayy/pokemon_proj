@@ -8,6 +8,7 @@
 #include <mutex>
 #include <iomanip>
 #include <array>
+#include <optional>
 #include <nlohmann/json.hpp>
 
 #ifdef _WIN32
@@ -157,7 +158,7 @@ void fetch_async(const std::string& url, PriceSink* sink) {
 
 // Public API
 
-double Scraper::get_best_price(const std::string& card_name) {
+std::optional<double> Scraper::get_best_price(const std::string& card_name) {
     PriceSink sink;
 
     const std::array<std::string, 3> apis = {
@@ -166,7 +167,6 @@ double Scraper::get_best_price(const std::string& card_name) {
         "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1&pageSize=250"
     };
 
-
     std::array<std::future<void>, 3> tasks;
     for (size_t i = 0; i < apis.size(); ++i) {
         tasks[i] = std::async(std::launch::async, fetch_async, apis[i], &sink);
@@ -174,6 +174,8 @@ double Scraper::get_best_price(const std::string& card_name) {
     for (auto& t : tasks) t.wait();
 
     const size_t n = sink.size();
+    if (n == 0) return std::nullopt;
+
     if (n >= 5) {
         double sum = 0.0;
         for (size_t i = 0; i < n; ++i) sum += sink.buf[i];
@@ -188,24 +190,25 @@ double Scraper::get_best_price(const std::string& card_name) {
 
         std::cerr << "[SCRAPER] Extracted " << n << " prices, avg: $"
                   << std::fixed << std::setprecision(2) << avg
-                  << ", stddev: $" << sd << std::endl;
+                  << ", stddev: $" << sd << "\n";
         return avg;
     }
 
-    return n == 0 ? 127.50 : sink.buf[0];
+    return sink.buf[0];
 }
 
-double Scraper::get_ebay_price(const std::string& card_name) {
+std::optional<double> Scraper::get_ebay_price(const std::string& card_name) {
     return get_best_price(card_name);
 }
 
-double Scraper::get_ebay_price_with_retry(const std::string& card_name, int max_attempts) {
-    double last = 0.0;
+std::optional<double> Scraper::get_ebay_price_with_retry(const std::string& card_name,
+                                                        int max_attempts) {
+    std::optional<double> last;
     for (int i = 0; i < std::max(1, max_attempts); ++i) {
         last = get_best_price(card_name);
-        if (last > 0.0 && last != 127.50) return last;
+        if (last.has_value()) return last;
     }
-    return last;
+    return last;  // nullopt on total failure
 }
 
 } // namespace pokemon

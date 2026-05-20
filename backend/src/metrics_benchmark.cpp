@@ -30,7 +30,8 @@ BenchContext& ctx() {
 std::vector<double> generate_prices(int count, const std::string& card_name) {
     std::vector<double> prices;
     prices.reserve(count);
-    double base = pokemon::Scraper::get_best_price(card_name);
+    auto base_opt = pokemon::Scraper::get_best_price(card_name);
+    double base = base_opt.value_or(100.0);
     if (base <= 0) base = 100.0;
 
     std::mt19937 rng(std::random_device{}());
