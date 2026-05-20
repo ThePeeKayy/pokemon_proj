@@ -8,7 +8,7 @@ Built as a learning project for low-latency C++ patterns: **lock-free
 metrics**, **SIMD-accelerated math**, and **concurrent pool design** —
 with measured benchmarks for each.
 
-![frontend](docs/frontend.png)
+![frontend](frontend/public/frontend.png)
 
 
 ---
