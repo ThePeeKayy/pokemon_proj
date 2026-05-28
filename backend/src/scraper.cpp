@@ -161,17 +161,10 @@ void fetch_async(const std::string& url, PriceSink* sink) {
 std::optional<double> Scraper::get_best_price(const std::string& card_name) {
     PriceSink sink;
 
-    const std::array<std::string, 3> apis = {
-        "https://api.tcgplayer.com/catalog/search?q=" + card_name + "+base+set",
-        "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1",
-        "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1&pageSize=250"
-    };
+    const std::string url =
+        "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1&pageSize=250";
 
-    std::array<std::future<void>, 3> tasks;
-    for (size_t i = 0; i < apis.size(); ++i) {
-        tasks[i] = std::async(std::launch::async, fetch_async, apis[i], &sink);
-    }
-    for (auto& t : tasks) t.wait();
+    fetch_async(url, &sink);
 
     const size_t n = sink.size();
     if (n == 0) return std::nullopt;
