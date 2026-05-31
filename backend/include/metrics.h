@@ -56,11 +56,9 @@ public:
                        size_t dataset_size,
                        bool cache_hit = false) noexcept
     {
-        const size_t idx = write_idx_.fetch_add(1, std::memory_order_acq_rel);
-        if (idx >= kRingSize) {
-            dropped_.fetch_add(1, std::memory_order_relaxed);
-            return;
-        }
+        const size_t raw = write_idx_.fetch_add(1, std::memory_order_acq_rel);
+        const size_t idx = raw & kRingMask; 
+        
         Slot& s = ring_[idx];
         s.latency_ms   = latency_ms;
         s.timestamp_ns = get_current_ns();
