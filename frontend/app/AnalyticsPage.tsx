@@ -382,7 +382,7 @@ export function AnalyticsPage({
             />
           </div>
 
-          <div className="flex-1 space-y-4 min-w-0 max-w-3xl">
+          <div className="flex-1 space-y-4 min-w-0">
             {/* Card selector — mobile */}
             <div className="sm:hidden">
               <CardDropdown

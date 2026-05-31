@@ -163,7 +163,7 @@ std::optional<double> Scraper::get_best_price(const std::string& card_name) {
 
     std::vector<std::string> urls = {
         "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "+set.id:base1&pageSize=250",
-        "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "&pageSize=250",
+        "https://api.pokemontcg.io/v2/cards?q=name:" + card_name + "%20set.series:Base set.printedTotal:102&pageSize=250",
 
         // Other urls need money
     };
