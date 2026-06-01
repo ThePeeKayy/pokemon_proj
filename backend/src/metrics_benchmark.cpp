@@ -19,7 +19,7 @@ struct BenchContext {
     pokemon::StatsModel         model{50};
     pokemon::MeanReversionAlgo  mr_algo;
     pokemon::MomentumAlgo       mom_algo;
-    std::vector<double>         bench_latencies;
+    std::vector<double>         bench_latencies; 
 };
 
 BenchContext& ctx() {
@@ -51,14 +51,11 @@ void setup() {
 
 } // namespace
 
+
 static void BM_TechnicalIndicators(benchmark::State& state) {
     auto& c = ctx();
     for (auto _ : state) {
-        auto start = std::chrono::high_resolution_clock::now();
         auto result = c.model.get_state();
-        auto end = std::chrono::high_resolution_clock::now();
-        double ms = std::chrono::duration<double, std::milli>(end - start).count();
-        c.bench_latencies.push_back(ms);
         benchmark::DoNotOptimize(result);
     }
 }
@@ -67,11 +64,7 @@ BENCHMARK(BM_TechnicalIndicators);
 static void BM_MeanReversion(benchmark::State& state) {
     auto& c = ctx();
     for (auto _ : state) {
-        auto start = std::chrono::high_resolution_clock::now();
         auto signal = c.mr_algo.analyze(c.prices_data);
-        auto end = std::chrono::high_resolution_clock::now();
-        double ms = std::chrono::duration<double, std::milli>(end - start).count();
-        c.bench_latencies.push_back(ms);
         benchmark::DoNotOptimize(signal);
     }
 }
@@ -80,16 +73,32 @@ BENCHMARK(BM_MeanReversion);
 static void BM_Momentum(benchmark::State& state) {
     auto& c = ctx();
     for (auto _ : state) {
-        auto start = std::chrono::high_resolution_clock::now();
         auto signal = c.mom_algo.analyze(c.prices_data);
-        auto end = std::chrono::high_resolution_clock::now();
-        double ms = std::chrono::duration<double, std::milli>(end - start).count();
-        c.bench_latencies.push_back(ms);
         benchmark::DoNotOptimize(signal);
     }
 }
 BENCHMARK(BM_Momentum);
 
+static void collect_latency_samples(size_t n_per_op) {
+    auto& c = ctx();
+    c.bench_latencies.clear();
+    c.bench_latencies.reserve(n_per_op * 3);
+
+    auto sample = [&](auto fn) {
+        for (size_t i = 0; i < n_per_op; ++i) {
+            const auto start = std::chrono::steady_clock::now();
+            auto result = fn();
+            const auto end = std::chrono::steady_clock::now();
+            benchmark::DoNotOptimize(result);
+            c.bench_latencies.push_back(
+                std::chrono::duration<double, std::milli>(end - start).count());
+        }
+    };
+
+    sample([&] { return c.model.get_state(); });
+    sample([&] { return c.mr_algo.analyze(c.prices_data); });
+    sample([&] { return c.mom_algo.analyze(c.prices_data); });
+}
 static void export_metrics() {
     auto& c = ctx();
     auto state = c.model.get_state();
@@ -168,6 +177,7 @@ int main(int argc, char* argv[]) {
     ::benchmark::Initialize(&argc, argv);
     ::benchmark::RunSpecifiedBenchmarks();
     ::benchmark::Shutdown();
+    collect_latency_samples(100000);
 
     export_metrics();
     export_benchmark_results();

@@ -136,7 +136,7 @@ const ConcurrencyPanel = ({
         <SectionHead
           index={index}
           title="Mutex vs Lock-Free"
-          hint={`Pool size ${data?.pool_size ?? "—"}. Nanoseconds per acquire + release — lower is better. Fast ≈ 50ns hot path, slow ≈ 2ms I/O-bound unit.`}
+          hint={`Pool size ${data?.pool_size ?? "—"}. Nanoseconds per acquire + release — lower is better. Uses fake calculations of ~50ns for fast and 2ms for slow to avoid dependence on network response.`}
         />
         {onRun && (
           <button
@@ -498,7 +498,6 @@ export function AnalyticsPage({
                   <p className="text-[9px] text-neutral-500 mt-0.5">Price normalization</p>
                   <div className="mt-3 flex items-end justify-between">
                     <span className="text-[9px] uppercase tracking-wider text-neutral-500">Confidence</span>
-                    {/* confidence comes from C++ as 0-100 already; do not multiply. */}
                     <span className="font-mono text-base font-medium text-white tabular-nums">
                       {fmt(algos.mean_reversion?.confidence, 1, "%")}
                     </span>

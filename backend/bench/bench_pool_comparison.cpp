@@ -11,16 +11,12 @@ namespace {
 // ----- Workload simulators -------------------------------------------------
 
 inline void fast_work() noexcept {
-    // ~50ns: enough to keep the CPU honest, short enough that lock overhead matters.
     volatile uint64_t x = 0;
     for (int i = 0; i < 32; ++i) x += i * 1315423911u;
     (void)x;
 }
 
 inline void slow_work() noexcept {
-    // ~2ms: stand-in for a curl request. We use a busy loop instead of sleep
-    // to keep all threads on-CPU; sleep would let the kernel schedule them
-    // serially and hide the comparison.
     const auto end = std::chrono::steady_clock::now()
                    + std::chrono::microseconds(2000);
     volatile uint64_t x = 0;
@@ -30,7 +26,7 @@ inline void slow_work() noexcept {
     (void)x;
 }
 
-// ----- Mutex pool ----------------------------------------------------------
+// Mutex pool
 
 struct MutexPool {
     std::mutex mu;
@@ -54,13 +50,7 @@ struct MutexPool {
     }
 };
 
-// ----- Lock-free Treiber-stack pool ---------------------------------------
-//
-// Uses a hazard-free shortcut: handles are leaked between iterations within
-// a single benchmark run (we pre-allocate enough nodes and never free during
-// the measured window), so ABA + use-after-free do not arise in this test.
-// In production you'd need hazard pointers or epoch-based reclamation;
-// that's part of why "just use a mutex" is often the right answer.
+// Lock-free Treiber-stack pool
 
 struct LockFreeNode {
     int value;
@@ -69,7 +59,7 @@ struct LockFreeNode {
 
 struct LockFreePool {
     alignas(64) std::atomic<LockFreeNode*> head{nullptr};
-    std::vector<LockFreeNode> storage;  // owns nodes; never resized during bench
+    std::vector<LockFreeNode> storage;  
 
     explicit LockFreePool(size_t n) : storage(n) {
         for (size_t i = 0; i < n; ++i) {
@@ -95,8 +85,6 @@ struct LockFreePool {
     }
 
     void release(int v) {
-        // Index back into storage to find the node we popped. Cheap because
-        // values are 0..N-1 by construction.
         LockFreeNode* n = &storage[v];
         LockFreeNode* h = head.load(std::memory_order_relaxed);
         do { n->next = h; }
@@ -105,7 +93,7 @@ struct LockFreePool {
     }
 };
 
-// ----- Benchmark driver ----------------------------------------------------
+// Benchmark driver
 
 template <typename Pool, typename Work>
 double run(Pool& pool, size_t num_threads, size_t iters_per_thread, Work work) {
@@ -142,14 +130,13 @@ struct Row {
 } // namespace
 
 int main(int argc, char** argv) {
-    // CI-friendly defaults; scale up for serious numbers.
     size_t scale = 1;
     if (argc > 1) scale = std::max<size_t>(1, std::strtoul(argv[1], nullptr, 10));
 
     const size_t pool_size = 8;
     const size_t thread_counts[] = {1, 4, 8, 16};
     const size_t fast_iters = 200000 * scale;
-    const size_t slow_iters = 200 * scale;  // ~0.4s per cell at scale=1
+    const size_t slow_iters = 200 * scale; 
 
     std::vector<Row> rows;
     rows.reserve(8);
