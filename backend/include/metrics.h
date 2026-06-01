@@ -48,24 +48,31 @@ public:
         : start_time_(std::time(nullptr))
         , ring_(new Slot[kRingSize])
         , write_idx_(0)
-        , dropped_(0)
     {}
-
     void record_metric(double latency_ms,
                        Indicator indicator,
                        size_t dataset_size,
                        bool cache_hit = false) noexcept
     {
-        const size_t raw = write_idx_.fetch_add(1, std::memory_order_acq_rel);
-        const size_t idx = raw & kRingMask; 
-        
-        Slot& s = ring_[idx];
-        s.latency_ms   = latency_ms;
-        s.timestamp_ns = get_current_ns();
-        s.dataset_size = static_cast<uint32_t>(dataset_size);
-        s.indicator    = indicator;
-        s.cache_hit    = cache_hit;
-        s.committed.store(true, std::memory_order_release);
+        const uint64_t raw = write_idx_.fetch_add(1, std::memory_order_acq_rel);
+        Slot& s = ring_[raw & kRingMask];
+
+        const uint64_t done = (raw + 1) << 1; 
+        const uint64_t busy = done | 1ull;     
+
+
+        s.seq.store(busy, std::memory_order_release);
+        std::atomic_thread_fence(std::memory_order_release);
+
+        s.latency_ms.store(latency_ms, std::memory_order_relaxed);
+        s.timestamp_ns.store(get_current_ns(), std::memory_order_relaxed);
+        s.dataset_size.store(static_cast<uint32_t>(dataset_size),
+                             std::memory_order_relaxed);
+        s.indicator.store(static_cast<uint8_t>(indicator),
+                          std::memory_order_relaxed);
+        s.cache_hit.store(cache_hit, std::memory_order_relaxed);
+
+        s.seq.store(done, std::memory_order_release);
     }
 
     struct AggregateStats {
@@ -92,10 +99,13 @@ public:
 
     AggregateStats compute_stats(Indicator filter = Indicator::COUNT_) {
         AggregateStats stats{};
-        const size_t end = std::min(write_idx_.load(std::memory_order_acquire), kRingSize);
+
+        const uint64_t total     = write_idx_.load(std::memory_order_acquire);
+        const uint64_t available = std::min<uint64_t>(total, kRingSize);
+        const uint64_t start     = total - available;
 
         std::vector<double> values;
-        values.reserve(end);
+        values.reserve(static_cast<size_t>(available));
 
         size_t count = 0, cache_hits = 0;
         size_t b1 = 0, b5 = 0, b10 = 0, a10 = 0;
@@ -103,19 +113,19 @@ public:
         double mn = std::numeric_limits<double>::infinity();
         double mx = -std::numeric_limits<double>::infinity();
 
-        for (size_t i = 0; i < end; ++i) {
-            const Slot& s = ring_[i];
-            if (!s.committed.load(std::memory_order_acquire)) continue;
-            if (filter != Indicator::COUNT_ && s.indicator != filter) continue;
+        Sample sm;
+        for (uint64_t r = start; r < total; ++r) {
+            if (!try_read(r, sm)) continue;
+            if (filter != Indicator::COUNT_ && sm.indicator != filter) continue;
 
-            const double v = s.latency_ms;
+            const double v = sm.latency_ms;
             values.push_back(v);
             ++count;
             sum    += v;
             sum_sq += v * v;
             if (v < mn) mn = v;
             if (v > mx) mx = v;
-            if (s.cache_hit) ++cache_hits;
+            if (sm.cache_hit) ++cache_hits;
             if (v <  1.0)  ++b1;
             if (v <  5.0)  ++b5;
             if (v < 10.0)  ++b10;
@@ -173,21 +183,23 @@ public:
         return result;
     }
 
-    // NOT thread-safe with concurrent record_metric callers
     void clear() noexcept {
         write_idx_.store(0, std::memory_order_relaxed);
-        dropped_.store(0, std::memory_order_relaxed);
         for (size_t i = 0; i < kRingSize; ++i) {
-            ring_[i].committed.store(false, std::memory_order_relaxed);
+            ring_[i].seq.store(0, std::memory_order_relaxed);
         }
     }
 
     size_t metric_count() const noexcept {
-        return std::min(write_idx_.load(std::memory_order_acquire), kRingSize);
+        const uint64_t total = write_idx_.load(std::memory_order_acquire);
+        return static_cast<size_t>(std::min<uint64_t>(total, kRingSize));
     }
 
     size_t dropped_count() const noexcept {
-        return dropped_.load(std::memory_order_relaxed);
+        const uint64_t total = write_idx_.load(std::memory_order_acquire);
+        return total > kRingSize
+            ? static_cast<size_t>(total - kRingSize)
+            : 0;
     }
 
     std::string to_json() {
@@ -250,21 +262,47 @@ public:
 
 private:
     struct Slot {
-        double      latency_ms{0.0};
-        uint64_t    timestamp_ns{0};
-        uint32_t    dataset_size{0};
-        Indicator   indicator{Indicator::OTHER};
-        bool        cache_hit{false};
-        std::atomic<bool> committed{false};
+        std::atomic<double>   latency_ms{0.0};
+        std::atomic<uint64_t> timestamp_ns{0};
+        std::atomic<uint32_t> dataset_size{0};
+        std::atomic<uint8_t>  indicator{static_cast<uint8_t>(Indicator::OTHER)};
+        std::atomic<bool>     cache_hit{false};
+        std::atomic<uint64_t> seq{0};
     };
 
-    std::time_t                     start_time_;
-    std::unique_ptr<Slot[]>         ring_;
-    alignas(64) std::atomic<size_t> write_idx_;
-    alignas(64) std::atomic<size_t> dropped_;
+    struct Sample {
+        double    latency_ms{0.0};
+        uint64_t  timestamp_ns{0};
+        uint32_t  dataset_size{0};
+        Indicator indicator{Indicator::OTHER};
+        bool      cache_hit{false};
+    };
+
+    std::time_t                       start_time_;
+    std::unique_ptr<Slot[]>           ring_;
+    alignas(64) std::atomic<uint64_t> write_idx_;
 
     static constexpr double BASELINE_P95_MS = 2.0;
     static constexpr double BASELINE_P99_MS = 3.0;
+
+    bool try_read(uint64_t raw, Sample& out) const noexcept {
+        const Slot& s = ring_[raw & kRingMask];
+        const uint64_t expected = (raw + 1) << 1;   
+
+        const uint64_t s1 = s.seq.load(std::memory_order_acquire);
+        if (s1 != expected) return false;           
+
+        out.latency_ms   = s.latency_ms.load(std::memory_order_relaxed);
+        out.timestamp_ns = s.timestamp_ns.load(std::memory_order_relaxed);
+        out.dataset_size = s.dataset_size.load(std::memory_order_relaxed);
+        out.indicator    = static_cast<Indicator>(
+                               s.indicator.load(std::memory_order_relaxed));
+        out.cache_hit    = s.cache_hit.load(std::memory_order_relaxed);
+
+        std::atomic_thread_fence(std::memory_order_acquire);
+        const uint64_t s2 = s.seq.load(std::memory_order_relaxed);
+        return s1 == s2;
+    }
 
     static uint64_t get_current_ns() noexcept {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(

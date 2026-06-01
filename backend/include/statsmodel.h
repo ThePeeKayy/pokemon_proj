@@ -49,8 +49,6 @@ public:
     size_t price_count() const noexcept { return count_; }
 
 private:
-    
-    
     std::array<Price, kMaxWindow> prices_{};
     size_t window_size_;
     size_t head_;   
